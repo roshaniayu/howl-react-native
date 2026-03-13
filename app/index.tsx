@@ -1,16 +1,26 @@
-import { Ionicons } from '@expo/vector-icons';
+import { HowlColors } from '@/constants/theme';
+import { HorizontalPicker } from 'expo-horizontal-picker';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-const durations = ['5 mins', '10 mins', '15 mins', '30 mins', '45 mins', '1 hour'] as const;
-const PICKER_ITEM_WIDTH = 94;
+const durations = [
+  { durationName: '5 mins', durationTime: 299 },
+  { durationName: '10 mins', durationTime: 599 },
+  { durationName: '15 mins', durationTime: 899 },
+  { durationName: '30 mins', durationTime: 1799 },
+  { durationName: '45 mins', durationTime: 2699 },
+  { durationName: '1 hour', durationTime: 3599 },
+] as const;
 
 export default function HomeScreen() {
-  const [selectedDuration, setSelectedDuration] = useState<(typeof durations)[number]>('45 mins');
+  const [selectedDuration, setSelectedDuration] = useState<(typeof durations)[number]>(durations[0]);
 
-  const selectedIndex = durations.indexOf(selectedDuration);
+  const pickerItems = durations.map((duration) => ({
+    label: duration.durationName,
+    value: duration.durationTime,
+  }));
 
   return (
     <View style={styles.container}>
@@ -48,40 +58,56 @@ export default function HomeScreen() {
             asleep within minutes.
           </Text>
 
-          {/* <View style={styles.durationPickerShell}>
-            <Picker
-              data={[...durations]}
-              itemWidth={PICKER_ITEM_WIDTH}
-              initialIndex={selectedIndex}
-              onChange={(index: number) => {
+          <View style={styles.durationPickerShell}>
+            <HorizontalPicker
+              items={pickerItems}
+              initialScrollIndex={0}
+              visibleItemCount={3}
+              onChange={(value, index) => {
                 const clampedIndex = Math.max(0, Math.min(index, durations.length - 1));
-                setSelectedDuration(durations[clampedIndex]);
-              }}
-              mark={<View pointerEvents="none" style={styles.durationPickerCenterGlow} />}
-              renderItem={(item: (typeof durations)[number], index: number) => {
-                const selected = selectedIndex === index;
+                const fromIndex = durations[clampedIndex];
+                const fromValue = durations.find((duration) => duration.durationTime === value);
 
-                return (
-                  <View style={[styles.durationOption, selected ? styles.durationOptionSelected : styles.durationOptionDim]}>
-                    <Text style={[styles.durationText, selected && styles.durationTextSelected]}>{item}</Text>
-                  </View>
-                );
+                if (fromValue) {
+                  setSelectedDuration(fromValue);
+                } else if (fromIndex) {
+                  setSelectedDuration(fromIndex);
+                }
               }}
+              focusedTransformStyle={[{ scale: 1.1 }]}
+              unfocusedTransformStyle={[{ scale: 0.9 }]}
+              focusedOpacityStyle={1}
+              unfocusedOpacityStyle={0.4}
+              pickerItemStyle={styles.durationOption}
+              pickerItemTextStyle={styles.durationText}
+              style={styles.durationPicker}
             />
-          </View> */}
+          </View>
         </View>
 
         <View style={styles.controls}>
           <Pressable style={styles.iconButton}>
-            <Ionicons name="timer-outline" size={30} color="#ECF2F8" />
+            <Image
+              source={require('@/assets/icons/icon-history.png')}
+              style={styles.sideControlIcon}
+              contentFit="contain"
+            />
           </Pressable>
 
           <Pressable style={styles.playButton}>
-            <Ionicons name="play" size={38} color="#0A1E36" style={styles.playIcon} />
+            <Image
+              source={require('@/assets/icons/icon-play.png')}
+              style={styles.playControlIcon}
+              contentFit="contain"
+            />
           </Pressable>
 
           <Pressable style={styles.iconButton}>
-            <Ionicons name="musical-notes-outline" size={30} color="#ECF2F8" />
+            <Image
+              source={require('@/assets/icons/icon-ambiance.png')}
+              style={styles.sideControlIcon}
+              contentFit="contain"
+            />
           </Pressable>
         </View>
       </View>
@@ -92,7 +118,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1E2B',
+    backgroundColor: HowlColors.dark_blue,
   },
   scene: {
     ...StyleSheet.absoluteFillObject,
@@ -132,7 +158,7 @@ const styles = StyleSheet.create({
     height: 58,
   },
   title: {
-    color: '#F3F5F7',
+    color: HowlColors.white,
     fontFamily: 'NunitoSans-Bold',
     fontSize: 22,
     letterSpacing: 0.2,
@@ -140,7 +166,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subtitle: {
-    color: 'rgba(233, 240, 246, 0.76)',
+    color: HowlColors.gray_80,
     fontFamily: 'NunitoSans-Regular',
     fontSize: 17,
     lineHeight: 24,
@@ -150,79 +176,53 @@ const styles = StyleSheet.create({
   },
   durationPickerShell: {
     position: 'relative',
-    width: '100%',
-    maxWidth: 510,
+    width: '76%',
     borderRadius: 999,
-    backgroundColor: 'rgba(216, 227, 238, 0.20)',
-    borderWidth: 1,
-    borderColor: 'rgba(241, 246, 250, 0.07)',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     overflow: 'hidden',
+    fontFamily: 'NunitoSans-Regular',
+  },
+  durationPicker: {
+    width: '100%',
   },
   durationOption: {
-    width: PICKER_ITEM_WIDTH,
+    width: 90,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    paddingVertical: 22,
-    marginHorizontal: 2,
-  },
-  durationOptionSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.10)',
-    opacity: 1,
-  },
-  durationOptionDim: {
-    opacity: 0.45,
-  },
-  durationPickerCenterGlow: {
-    position: 'absolute',
-    top: 8,
-    bottom: 8,
-    left: '50%',
-    width: PICKER_ITEM_WIDTH,
-    marginLeft: -PICKER_ITEM_WIDTH / 2,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    fontFamily: 'NunitoSans-Regular',
   },
   durationText: {
-    color: 'rgba(233, 240, 246, 0.42)',
-    fontFamily: 'NunitoSans-Medium',
+    color: HowlColors.gray_80,
     fontSize: 17,
-  },
-  durationTextSelected: {
-    color: '#F4F7FA',
-    fontFamily: 'NunitoSans-SemiBold',
-    fontSize: 18,
+    fontFamily: 'NunitoSans-Regular',
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 26,
-    marginBottom: 6,
+    gap: 20,
+    marginBottom: 4,
   },
   iconButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 60,
+    height: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(8, 23, 41, 0.18)',
   },
   playButton: {
     width: 112,
     height: 112,
-    borderRadius: 56,
-    backgroundColor: '#F4F7FA',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#04111F',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 8,
   },
-  playIcon: {
-    marginLeft: 4,
+  sideControlIcon: {
+    width: 32,
+    height: 32,
+  },
+  playControlIcon: {
+    width: 60,
+    height: 60,
   },
 });

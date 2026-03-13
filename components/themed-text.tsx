@@ -35,24 +35,26 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   default: {
+    fontFamily: 'NunitoSans-Regular',
     fontSize: 16,
     lineHeight: 24,
   },
   defaultSemiBold: {
+    fontFamily: 'NunitoSans-SemiBold',
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '600',
   },
   title: {
+    fontFamily: 'NunitoSans-Bold',
     fontSize: 32,
-    fontWeight: 'bold',
     lineHeight: 32,
   },
   subtitle: {
+    fontFamily: 'NunitoSans-Bold',
     fontSize: 20,
-    fontWeight: 'bold',
   },
   link: {
+    fontFamily: 'NunitoSans-Regular',
     lineHeight: 30,
     fontSize: 16,
     color: '#0a7ea4',

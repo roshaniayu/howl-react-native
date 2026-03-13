@@ -8,6 +8,15 @@ import { Platform } from 'react-native';
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
+export const HowlColors = {
+  white: '#FFFFFF',
+  gray_80: '#D0D2CD',
+  gray_100: '#ADB0A7',
+  blue_70: '#45789C',
+  blue_100: '#26435E',
+  dark_blue: '#0F1E2B',
+} as const;
+
 export const Colors = {
   light: {
     text: '#11181C',
@@ -29,25 +38,23 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: 'NunitoSans-Regular',
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
+    rounded: 'NunitoSans-Regular',
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'NunitoSans-Regular',
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'NunitoSans-Regular',
     mono: 'monospace',
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: "'Nunito Sans', system-ui, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+    rounded: "'Nunito Sans', system-ui, sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
