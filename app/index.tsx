@@ -2,6 +2,7 @@ import { HowlColors } from '@/constants/theme';
 import { Audio } from 'expo-av';
 import { HorizontalPicker } from 'expo-horizontal-picker';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -33,11 +34,13 @@ function formatRemainingTime(totalSeconds: number) {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [selectedDuration, setSelectedDuration] = useState<(typeof durations)[number]>(durations[0]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [totalSeconds, setTotalSeconds] = useState<number | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const wasPlayingRef = useRef(false);
   const sceneryTranslateY = useRef(new Animated.Value(0)).current;
   const characterTranslateY = useRef(new Animated.Value(0)).current;
   const sceneryFloatLoopRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -101,6 +104,23 @@ export default function HomeScreen() {
 
     void syncPlayback();
   }, [isPlaying]);
+
+  useEffect(() => {
+    const wasPlaying = wasPlayingRef.current;
+
+    if (wasPlaying && !isPlaying && totalSeconds !== null && remainingSeconds !== null) {
+      const playedSeconds = Math.max(0, totalSeconds - remainingSeconds);
+
+      router.push({
+        pathname: '/modal',
+        params: {
+          playedSeconds: String(playedSeconds),
+        },
+      });
+    }
+
+    wasPlayingRef.current = isPlaying;
+  }, [isPlaying, totalSeconds, remainingSeconds, router]);
 
   useEffect(() => {
     return () => {
@@ -412,7 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(255, 255, 255, 0.10)',
     overflow: 'hidden',
-    fontFamily: 'NunitoSans-Regular',
+    fontFamily: 'NunitoSans-Medium',
   },
   durationPicker: {
     width: '100%',
@@ -423,12 +443,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    fontFamily: 'NunitoSans-Regular',
+    fontFamily: 'NunitoSans-Medium',
   },
   durationText: {
     color: HowlColors.gray_80,
-    fontSize: 17,
-    fontFamily: 'NunitoSans-Regular',
+    fontSize: 18,
+    fontFamily: 'NunitoSans-Medium',
+    fontWeight: 'normal',
   },
   timerPill: {
     borderRadius: 999,
