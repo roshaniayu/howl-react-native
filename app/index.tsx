@@ -49,38 +49,73 @@ export default function HomeScreen() {
   const characterTranslateY = useRef(new Animated.Value(0)).current;
   const sceneryFloatLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const characterFloatLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const endTimeRef = useRef<number | null>(null);
 
+  const selectedAmbience = getAmbienceById(selectedAmbienceId);
   const pickerItems = durations.map((duration) => ({
     label: duration.durationName,
     value: duration.durationTime,
   }));
-  const selectedAmbience = getAmbienceById(selectedAmbienceId);
-
   const countdownProgress =
     totalSeconds && remainingSeconds !== null
       ? Math.min(1, Math.max(0, (totalSeconds - remainingSeconds) / totalSeconds))
       : 0;
   const progressStrokeOffset = RING_CIRCUMFERENCE * (1 - countdownProgress);
 
-  useEffect(() => {
-    if (!isPlaying || remainingSeconds === null) {
+  const handlePlayToggle = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      startTimeRef.current = null;
+      endTimeRef.current = null;
       return;
     }
 
+    startTimeRef.current = null;
+    endTimeRef.current = null;
+    const nextTotal = selectedDuration.durationTime + 1;
+    setTotalSeconds(nextTotal);
+    setRemainingSeconds(nextTotal);
+    setIsPlaying(true);
+  };
+
+  // Timer
+  useEffect(() => {
+    if (!isPlaying || totalSeconds === null) {
+      return;
+    }
+
+    // Set the end time when playback starts
+    if (startTimeRef.current === null) {
+      const now = Date.now();
+      startTimeRef.current = now;
+      endTimeRef.current = now + totalSeconds * 1000;
+    }
+
     const timerId = setInterval(() => {
-      setRemainingSeconds((previous) => {
-        if (previous === null || previous <= 1) {
-          setIsPlaying(false);
-          return 0;
-        }
+      const now = Date.now();
+      const endTime = endTimeRef.current;
 
-        return previous - 1;
-      });
-    }, 1000);
+      if (endTime === null) return;
 
-    return () => clearInterval(timerId);
-  }, [isPlaying, remainingSeconds]);
+      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
 
+      if (remaining <= 0) {
+        setIsPlaying(false);
+        setRemainingSeconds(0);
+        startTimeRef.current = null;
+        endTimeRef.current = null;
+      } else {
+        setRemainingSeconds(remaining);
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, [isPlaying, totalSeconds]);
+
+  // Ambience Background Animation
   useEffect(() => {
     const nextAmbienceId = parseAmbienceId(ambienceIdParam);
 
@@ -88,73 +123,6 @@ export default function HomeScreen() {
       setSelectedAmbienceId(nextAmbienceId);
     }
   }, [ambienceIdParam, selectedAmbienceId]);
-
-  useEffect(() => {
-    const syncPlayback = async () => {
-      try {
-        const needsNewSound =
-          !soundRef.current || soundAmbienceIdRef.current !== selectedAmbienceId;
-
-        if (needsNewSound) {
-          if (soundRef.current) {
-            await soundRef.current.unloadAsync();
-          }
-
-          const { sound } = await Audio.Sound.createAsync(
-            selectedAmbience.sound,
-            { isLooping: true, volume: 1 },
-          );
-          soundRef.current = sound;
-          soundAmbienceIdRef.current = selectedAmbienceId;
-        }
-
-        if (!soundRef.current) {
-          return;
-        }
-
-        if (isPlaying) {
-          await soundRef.current.setIsLoopingAsync(true);
-          await soundRef.current.replayAsync();
-        } else {
-          await soundRef.current.stopAsync();
-        }
-      } catch (error) {
-        console.warn('Audio playback error', error);
-      }
-    };
-
-    void syncPlayback();
-  }, [isPlaying, selectedAmbienceId, selectedAmbience.sound]);
-
-  useEffect(() => {
-    const wasPlaying = wasPlayingRef.current;
-
-    if (wasPlaying && !isPlaying && totalSeconds !== null && remainingSeconds !== null) {
-      const playedSeconds = Math.max(0, totalSeconds - remainingSeconds);
-
-      router.push({
-        pathname: '/session-finished',
-        params: {
-          playedSeconds: String(playedSeconds),
-        },
-      });
-    }
-
-    wasPlayingRef.current = isPlaying;
-  }, [isPlaying, totalSeconds, remainingSeconds, router]);
-
-  useEffect(() => {
-    return () => {
-      const unloadSound = async () => {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-      };
-
-      void unloadSound();
-    };
-  }, []);
 
   useEffect(() => {
     const floatConfig = selectedAmbience.floatAnimation;
@@ -226,17 +194,89 @@ export default function HomeScreen() {
     return stopFloating;
   }, [isPlaying, characterTranslateY, sceneryTranslateY, selectedAmbience]);
 
-  const handlePlayToggle = () => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      return;
+  // Music
+  useEffect(() => {
+    return () => {
+      const unloadSound = async () => {
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+      };
+
+      void unloadSound();
+    };
+  }, []);
+
+  useEffect(() => {
+    const setupAudioSession = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (error) {
+        console.error('Failed to set up audio session', error);
+      }
+    };
+
+    void setupAudioSession();
+  }, []);
+
+  useEffect(() => {
+    const syncPlayback = async () => {
+      try {
+        const needsNewSound =
+          !soundRef.current || soundAmbienceIdRef.current !== selectedAmbienceId;
+
+        if (needsNewSound) {
+          if (soundRef.current) {
+            await soundRef.current.unloadAsync();
+          }
+
+          const { sound } = await Audio.Sound.createAsync(
+            selectedAmbience.sound,
+            { isLooping: true, volume: 1 },
+          );
+          soundRef.current = sound;
+          soundAmbienceIdRef.current = selectedAmbienceId;
+        }
+
+        if (!soundRef.current) {
+          return;
+        }
+
+        if (isPlaying) {
+          await soundRef.current.setIsLoopingAsync(true);
+          await soundRef.current.replayAsync();
+        } else {
+          await soundRef.current.stopAsync();
+        }
+      } catch (error) {
+        console.warn('Audio playback error', error);
+      }
+    };
+
+    void syncPlayback();
+  }, [isPlaying, selectedAmbienceId, selectedAmbience.sound]);
+
+  useEffect(() => {
+    const wasPlaying = wasPlayingRef.current;
+
+    if (wasPlaying && !isPlaying && totalSeconds !== null && remainingSeconds !== null) {
+      const playedSeconds = Math.max(0, totalSeconds - remainingSeconds);
+
+      router.push({
+        pathname: '/session-finished',
+        params: {
+          playedSeconds: String(playedSeconds),
+        },
+      });
     }
 
-    const nextTotal = selectedDuration.durationTime + 1;
-    setTotalSeconds(nextTotal);
-    setRemainingSeconds(nextTotal);
-    setIsPlaying(true);
-  };
+    wasPlayingRef.current = isPlaying;
+  }, [isPlaying, totalSeconds, remainingSeconds, router]);
 
   return (
     <View style={styles.container}>
