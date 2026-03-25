@@ -1,8 +1,9 @@
+import { AmbienceId, getAmbienceById, parseAmbienceId } from '@/constants/ambiences';
 import { HowlColors } from '@/constants/theme';
 import { Audio } from 'expo-av';
 import { HorizontalPicker } from 'expo-horizontal-picker';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -35,11 +36,14 @@ function formatRemainingTime(totalSeconds: number) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { ambienceId: ambienceIdParam } = useLocalSearchParams<{ ambienceId?: string }>();
   const [selectedDuration, setSelectedDuration] = useState<(typeof durations)[number]>(durations[0]);
+  const [selectedAmbienceId, setSelectedAmbienceId] = useState<AmbienceId>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [totalSeconds, setTotalSeconds] = useState<number | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const soundAmbienceIdRef = useRef<AmbienceId | null>(null);
   const wasPlayingRef = useRef(false);
   const sceneryTranslateY = useRef(new Animated.Value(0)).current;
   const characterTranslateY = useRef(new Animated.Value(0)).current;
@@ -50,6 +54,7 @@ export default function HomeScreen() {
     label: duration.durationName,
     value: duration.durationTime,
   }));
+  const selectedAmbience = getAmbienceById(selectedAmbienceId);
 
   const countdownProgress =
     totalSeconds && remainingSeconds !== null
@@ -77,14 +82,30 @@ export default function HomeScreen() {
   }, [isPlaying, remainingSeconds]);
 
   useEffect(() => {
+    const nextAmbienceId = parseAmbienceId(ambienceIdParam);
+
+    if (nextAmbienceId && nextAmbienceId !== selectedAmbienceId) {
+      setSelectedAmbienceId(nextAmbienceId);
+    }
+  }, [ambienceIdParam, selectedAmbienceId]);
+
+  useEffect(() => {
     const syncPlayback = async () => {
       try {
-        if (!soundRef.current) {
+        const needsNewSound =
+          !soundRef.current || soundAmbienceIdRef.current !== selectedAmbienceId;
+
+        if (needsNewSound) {
+          if (soundRef.current) {
+            await soundRef.current.unloadAsync();
+          }
+
           const { sound } = await Audio.Sound.createAsync(
-            require('@/assets/audio/ambience-1-sound.m4a'),
+            selectedAmbience.sound,
             { isLooping: true, volume: 1 },
           );
           soundRef.current = sound;
+          soundAmbienceIdRef.current = selectedAmbienceId;
         }
 
         if (!soundRef.current) {
@@ -103,7 +124,7 @@ export default function HomeScreen() {
     };
 
     void syncPlayback();
-  }, [isPlaying]);
+  }, [isPlaying, selectedAmbienceId, selectedAmbience.sound]);
 
   useEffect(() => {
     const wasPlaying = wasPlayingRef.current;
@@ -112,7 +133,7 @@ export default function HomeScreen() {
       const playedSeconds = Math.max(0, totalSeconds - remainingSeconds);
 
       router.push({
-        pathname: '/modal',
+        pathname: '/session-finished',
         params: {
           playedSeconds: String(playedSeconds),
         },
@@ -136,6 +157,8 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    const floatConfig = selectedAmbience.floatAnimation;
+
     const stopFloating = () => {
       sceneryFloatLoopRef.current?.stop();
       characterFloatLoopRef.current?.stop();
@@ -166,14 +189,14 @@ export default function HomeScreen() {
     sceneryFloatLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(sceneryTranslateY, {
-          toValue: -110,
-          duration: 5000,
+          toValue: -floatConfig.sceneryLift,
+          duration: floatConfig.sceneryUpDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(sceneryTranslateY, {
           toValue: 0,
-          duration: 4000,
+          duration: floatConfig.sceneryDownDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -183,14 +206,14 @@ export default function HomeScreen() {
     characterFloatLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(characterTranslateY, {
-          toValue: -100,
-          duration: 4400,
+          toValue: -floatConfig.characterLift,
+          duration: floatConfig.characterUpDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(characterTranslateY, {
           toValue: 0,
-          duration: 3600,
+          duration: floatConfig.characterDownDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -201,7 +224,7 @@ export default function HomeScreen() {
     characterFloatLoopRef.current.start();
 
     return stopFloating;
-  }, [isPlaying, characterTranslateY, sceneryTranslateY]);
+  }, [isPlaying, characterTranslateY, sceneryTranslateY, selectedAmbience]);
 
   const handlePlayToggle = () => {
     if (isPlaying) {
@@ -226,20 +249,38 @@ export default function HomeScreen() {
           contentFit="cover"
         />
         <Animated.View
-          style={[styles.sceneryFloatLayer, { transform: [{ translateY: sceneryTranslateY }] }]}
+          style={[
+            styles.sceneryFloatLayer,
+            {
+              bottom: selectedAmbience.visuals.home.backgroundBottom,
+              height: selectedAmbience.visuals.home.backgroundHeight,
+              transform: [{ translateY: sceneryTranslateY }],
+            },
+          ]}
           pointerEvents="none">
           <Image
-            source={require('@/assets/ambiences/backgrounds/ambience-1-bg.png')}
-            style={styles.scenery}
+            source={selectedAmbience.bgImage}
+            style={[
+              styles.scenery,
+            ]}
             contentFit="cover"
           />
         </Animated.View>
         <Animated.View
-          style={[styles.characterFloatLayer, { transform: [{ translateY: characterTranslateY }] }]}
+          style={[
+            styles.characterFloatLayer,
+            {
+              bottom: selectedAmbience.visuals.home.characterBottom,
+              height: selectedAmbience.visuals.home.characterHeight,
+              transform: [{ translateY: characterTranslateY }],
+            },
+          ]}
           pointerEvents="none">
           <Image
-            source={require('@/assets/ambiences/characters/ambience-1-char.png')}
-            style={styles.character}
+            source={selectedAmbience.charImage}
+            style={[
+              styles.character,
+            ]}
             contentFit="cover"
           />
         </Animated.View>
@@ -294,13 +335,15 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.controls}>
-          <Pressable style={styles.iconButton}>
-            <Image
-              source={require('@/assets/icons/icon-history.png')}
-              style={styles.sideControlIcon}
-              contentFit="contain"
-            />
-          </Pressable>
+          {!isPlaying && (
+            <Pressable style={styles.iconButton}>
+              <Image
+                source={require('@/assets/icons/icon-history.png')}
+                style={styles.sideControlIcon}
+                contentFit="contain"
+              />
+            </Pressable>
+          )}
 
           <Pressable
             style={styles.playButton}
@@ -345,13 +388,22 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          <Pressable style={styles.iconButton}>
-            <Image
-              source={require('@/assets/icons/icon-ambiance.png')}
-              style={styles.sideControlIcon}
-              contentFit="contain"
-            />
-          </Pressable>
+          {!isPlaying && (
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/set-ambience',
+                  params: { ambienceId: String(selectedAmbienceId) },
+                });
+              }}>
+              <Image
+                source={require('@/assets/icons/icon-ambiance.png')}
+                style={styles.sideControlIcon}
+                contentFit="contain"
+              />
+            </Pressable>
+          )}
         </View>
       </View>
     </View>
@@ -373,7 +425,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -240,
     height: '70%',
   },
   scenery: {
@@ -385,7 +436,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -260,
     height: '60%',
   },
   character: {

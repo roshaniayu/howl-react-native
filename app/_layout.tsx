@@ -29,7 +29,15 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
-          name="modal"
+          name="session-finished"
+          options={{
+            headerShown: false,
+            presentation: 'transparentModal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="set-ambience"
           options={{
             headerShown: false,
             presentation: 'transparentModal',

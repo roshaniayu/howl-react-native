@@ -1,11 +1,16 @@
+import { Modal } from '@/components/ui/modal';
 import { HowlColors } from '@/constants/theme';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 const subtitle = 'Today, Howl has softly sent you to a sweet slumber for a total of';
-const quote = 'The sun showed up again. So I looked up and asked it: ‘Why?’\nThe sun looked down, and brightly whispered: ‘To give you another try.’\n- Brad Montague';
+const quotePart1 = 'The sun showed up again. So I looked up and asked it: ';
+const quoteBold1 = '‘Why?’';
+const quotePart2 = 'The sun looked down, and brightly whispered: ';
+const quoteBold2 = '‘To give you another try.’';
+const quotePart3 = '- Brad Montague';
 
 function formatDuration(totalSeconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(totalSeconds));
@@ -34,21 +39,11 @@ export default function ModalScreen() {
     router.back();
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 80 || gestureState.vy > 0.7) {
-          closeModal();
-        }
-      },
-    })
-  ).current;
-
   return (
-    <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={closeModal} />
-      <View style={styles.sheet} {...panResponder.panHandlers}>
+    <Modal
+      onClose={closeModal}
+      backgroundColor={HowlColors.blue_100}
+      titleSection={
         <View style={styles.headerSection}>
           <Pressable style={styles.closeButton} onPress={closeModal}>
             <Image source={require('@/assets/icons/icon-close.png')} style={styles.closeIcon} contentFit="contain" />
@@ -56,7 +51,8 @@ export default function ModalScreen() {
 
           <Text style={styles.title}>Session Finished</Text>
         </View>
-
+      }
+      contentSection={
         <View style={styles.middleSection}>
           <Text style={styles.duration}>
             {subtitle}{' '}
@@ -64,38 +60,34 @@ export default function ModalScreen() {
           </Text>
           <View style={styles.quoteSection}>
             <Text style={styles.quoteSymbol}>"</Text>
-            <Text style={styles.quote}>{quote}</Text>
+            <View style={styles.quoteTextBlock}>
+              <Text style={styles.quote}>
+                {quotePart1}
+                <Text style={styles.quoteBold}>{quoteBold1}</Text>
+              </Text>
+              <Text style={[styles.quote, styles.quoteSpace]}>
+                {quotePart2}
+                <Text style={styles.quoteBold}>{quoteBold2}</Text>
+              </Text>
+              <Text style={[styles.quote, styles.quoteSpace]}>
+                {quotePart3}
+              </Text>
+            </View>
           </View>
         </View>
-
+      }
+      footerSection={
         <View style={styles.footerSection}>
           <Pressable style={styles.doneButton} onPress={closeModal}>
             <Text style={styles.doneButtonText}>Done</Text>
           </Pressable>
         </View>
-      </View>
-    </View>
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end'
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheet: {
-    height: '90%',
-    width: '100%',
-    backgroundColor: HowlColors.blue_100,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-  },
   headerSection: {
     position: 'relative',
     alignItems: 'center',
@@ -156,14 +148,22 @@ const styles = StyleSheet.create({
     color: HowlColors.gray_80,
     marginRight: 8,
   },
-  quote: {
+  quoteTextBlock: {
     flex: 1,
+  },
+  quote: {
     fontFamily: 'NunitoSans-Medium',
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 24,
     color: HowlColors.gray_80,
     textAlign: 'left',
     paddingLeft: 4
+  },
+  quoteBold: {
+    fontFamily: 'NunitoSans-Bold',
+  },
+  quoteSpace: {
+    marginTop: 12,
   },
   doneButton: {
     width: '100%',
