@@ -28,7 +28,6 @@ export default function SessionHistoryScreen() {
         setError(null);
 
         // If you are using Firebase, you would pass response.data.idToken to Firebase here.
-        console.log('User Info:', response.data);
       } else {
         setUserInfo(null);
         setError('User cancelled the login flow');
@@ -51,8 +50,13 @@ export default function SessionHistoryScreen() {
   };
 
   useEffect(() => {
+    if (!process.env.EXPO_PUBLIC_WEB_CLIENT_ID) {
+      setError('Missing EXPO_PUBLIC_WEB_CLIENT_ID in .env');
+      return;
+    }
+
     GoogleSignin.configure({
-      webClientId: '876549095772-93b3ti8mbh3errt3iqsr7cnvuc1p8iq7.apps.googleusercontent.com',
+      webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
       offlineAccess: true, // Required if you need a refresh token
     });
   }, []);
@@ -62,7 +66,7 @@ export default function SessionHistoryScreen() {
       await GoogleSignin.signOut();
       setUserInfo(null);
     } catch (error) {
-      console.error(error);
+      setError(`Something went wrong: ${error}`);
     }
   };
 
