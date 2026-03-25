@@ -28,7 +28,7 @@
       "favicon": "./assets/howl-app-icon.png"
     },
     "splash": {
-      "image": "./assets/howl-app-icon.png",
+      "image": "./assets/logo/howl-logo-with-text.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F1E2B"
     },
@@ -37,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/howl-app-icon.png",
+          "image": "./assets/logo/howl-logo-with-text.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0F1E2B",

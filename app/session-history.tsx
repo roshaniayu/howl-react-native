@@ -3,7 +3,10 @@ import { HowlColors } from '@/constants/theme';
 import {
   GoogleSignin,
   GoogleSigninButton,
+  isErrorWithCode,
+  isSuccessResponse,
   statusCodes,
+  type SignInSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -12,29 +15,37 @@ import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function SessionHistoryScreen() {
   const router = useRouter();
-  const [userInfo, setUserInfo] = useState(null);
-  const [error, setError] = useState(null);
+  const [userInfo, setUserInfo] = useState<SignInSuccessResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const signIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
-      const user = await GoogleSignin.signIn();
+      const response = await GoogleSignin.signIn();
 
-      setUserInfo(user);
-      setError(null);
+      if (isSuccessResponse(response)) {
+        setUserInfo(response);
+        setError(null);
 
-      // If you are using Firebase, you would pass user.idToken to Firebase here.
-      console.log('User Info:', user);
-
-    } catch (error) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        setError('User cancelled the login flow');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        setError('Sign in is currently in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services are not available');
+        // If you are using Firebase, you would pass response.data.idToken to Firebase here.
+        console.log('User Info:', response.data);
       } else {
-        setError(`Something went wrong: ${error.message}`);
+        setUserInfo(null);
+        setError('User cancelled the login flow');
+      }
+    } catch (caughtError) {
+      if (isErrorWithCode(caughtError)) {
+        if (caughtError.code === statusCodes.SIGN_IN_CANCELLED) {
+          setError('User cancelled the login flow');
+        } else if (caughtError.code === statusCodes.IN_PROGRESS) {
+          setError('Sign in is currently in progress');
+        } else if (caughtError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          setError('Google Play Services are not available');
+        } else {
+          setError(`Something went wrong: ${caughtError.message}`);
+        }
+      } else {
+        setError('Something went wrong during sign in');
       }
     }
   };
@@ -74,23 +85,30 @@ export default function SessionHistoryScreen() {
       }
       contentSection={
         <View style={styles.middleSection}>
-          <Text style={styles.subtitle}>Welcome to Howl</Text>
-
           {userInfo ? (
             <View style={styles.profileContainer}>
-              <Text>Welcome, {userInfo.user.name}</Text>
-              <Text>Email: {userInfo.user.email}</Text>
+              <Text>Welcome, {userInfo.data.user.name}</Text>
+              <Text>Email: {userInfo.data.user.email}</Text>
               <Button title="Sign Out" onPress={signOut} color="red" />
+
             </View>
           ) : (
-            <GoogleSigninButton
-              size={GoogleSigninButton.Size.Wide}
-              color={GoogleSigninButton.Color.Dark}
-              onPress={signIn}
-            />
+            <View style={styles.signInContainer}>
+              <Text style={styles.subtitle}>To try this feature, please sign in with your Google account.</Text>
+              <GoogleSigninButton
+                size={GoogleSigninButton.Size.Wide}
+                color={GoogleSigninButton.Color.Light}
+                onPress={signIn}
+                style={styles.signInButton}
+              />
+            </View>
           )}
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error ? (
+            <View style={styles.errorBadge}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
         </View>
       }
       footerSection={
@@ -139,17 +157,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30
+    color: HowlColors.gray_80,
+    fontSize: 18,
+    fontFamily: 'NunitoSans-Medium',
+    fontWeight: 'normal',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   profileContainer: {
     alignItems: 'center',
     gap: 15
   },
-  errorText: {
-    color: 'red',
+  signInContainer: {
+    alignItems: 'center',
+  },
+  signInButton: {
+    width: 364,
+    height: 60
+  },
+  errorBadge: {
     marginTop: 20,
-    textAlign: 'center'
+    backgroundColor: '#DC2626',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    maxWidth: '100%',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontFamily: 'NunitoSans-SemiBold',
+    fontWeight: 'normal',
+    fontSize: 14,
+    lineHeight: 20,
   }
 });
