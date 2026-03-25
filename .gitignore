@@ -46,3 +46,6 @@ app-example
 .env
 .env.local
 .env.*
+
+# Ignore Firebase credentials file
+google-services.json

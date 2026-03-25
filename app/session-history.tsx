@@ -1,12 +1,10 @@
 import { Modal } from '@/components/ui/modal';
 import { HowlColors } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import {
-  GoogleSignin,
   GoogleSigninButton,
   isErrorWithCode,
-  isSuccessResponse,
   statusCodes,
-  type SignInSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -15,23 +13,14 @@ import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function SessionHistoryScreen() {
   const router = useRouter();
-  const [userInfo, setUserInfo] = useState<SignInSuccessResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { user, initializing, error: authError, signInWithGoogleAccount, signOutUser, clearError } = useAuth();
+  const [error, setError] = useState<string | null>(authError);
 
   const signIn = async () => {
+    setError(null);
+
     try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-
-      if (isSuccessResponse(response)) {
-        setUserInfo(response);
-        setError(null);
-
-        // If you are using Firebase, you would pass response.data.idToken to Firebase here.
-      } else {
-        setUserInfo(null);
-        setError('User cancelled the login flow');
-      }
+      await signInWithGoogleAccount();
     } catch (caughtError) {
       if (isErrorWithCode(caughtError)) {
         if (caughtError.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -50,21 +39,14 @@ export default function SessionHistoryScreen() {
   };
 
   useEffect(() => {
-    if (!process.env.EXPO_PUBLIC_WEB_CLIENT_ID) {
-      setError('Missing EXPO_PUBLIC_WEB_CLIENT_ID in .env');
-      return;
-    }
-
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
-      offlineAccess: true, // Required if you need a refresh token
-    });
-  }, []);
+    setError(authError);
+  }, [authError]);
 
   const signOut = async () => {
     try {
-      await GoogleSignin.signOut();
-      setUserInfo(null);
+      await signOutUser();
+      clearError();
+      setError(null);
     } catch (error) {
       setError(`Something went wrong: ${error}`);
     }
@@ -89,10 +71,14 @@ export default function SessionHistoryScreen() {
       }
       contentSection={
         <View style={styles.middleSection}>
-          {userInfo ? (
+          {initializing ? (
+            <View style={styles.signInContainer}>
+              <Text style={styles.subtitle}>Checking your saved session...</Text>
+            </View>
+          ) : user ? (
             <View style={styles.profileContainer}>
-              <Text>Welcome, {userInfo.data.user.name}</Text>
-              <Text>Email: {userInfo.data.user.email}</Text>
+              <Text>Welcome, {user.displayName || user.email || 'User'}</Text>
+              <Text>Email: {user.email || '-'}</Text>
               <Button title="Sign Out" onPress={signOut} color="red" />
 
             </View>

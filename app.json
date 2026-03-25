@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.roshaniayu.howl",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0F1E2B",
         "foregroundImage": "./assets/howl-app-icon.png",
@@ -46,7 +47,9 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "experiments": {
       "typedRoutes": true,
