@@ -28,7 +28,7 @@ function formatDuration(totalSeconds: number): string {
   return `${secs} secs`;
 }
 
-export default function ModalScreen() {
+export default function SessionFinishedScreen() {
   const router = useRouter();
   const { playedSeconds } = useLocalSearchParams<{ playedSeconds?: string }>();
   const parsedSeconds = Number(playedSeconds ?? '0');

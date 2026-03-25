@@ -376,7 +376,13 @@ export default function HomeScreen() {
 
         <View style={styles.controls}>
           {!isPlaying && (
-            <Pressable style={styles.iconButton}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/session-history',
+                });
+              }}>
               <Image
                 source={require('@/assets/icons/icon-history.png')}
                 style={styles.sideControlIcon}
