@@ -89,6 +89,7 @@ export default function SetAmbienceScreen() {
                 },
               ]}
               contentFit="cover"
+              contentPosition="top"
             />
             <Image
               source={selectedAmbience.charImage}
@@ -101,6 +102,7 @@ export default function SetAmbienceScreen() {
                 },
               ]}
               contentFit="cover"
+              contentPosition="top"
             />
           </View>
         </View>
@@ -111,6 +113,7 @@ export default function SetAmbienceScreen() {
 
 const styles = StyleSheet.create({
   skyBackground: {
+    width: '100%',
     height: '100%'
   },
   headerSection: {
@@ -192,7 +195,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginHorizontal: -24,
     marginBottom: -28,
-    overflow: 'hidden',
   },
   previewBackground: {
     position: 'absolute',

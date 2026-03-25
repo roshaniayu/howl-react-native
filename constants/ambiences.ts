@@ -77,14 +77,14 @@ export const AMBIENCE_OPTIONS: AmbienceOption[] = [
     sound: require('@/assets/audio/ambience-2-sound.m4a'),
     visuals: {
       home: {
-        backgroundBottom: -80,
+        backgroundBottom: 0,
         backgroundHeight: '68%',
-        characterBottom: -140,
+        characterBottom: -160,
         characterHeight: '58%',
       },
       setAmbience: {
         backgroundHeight: '100%',
-        backgroundBottom: -160,
+        backgroundBottom: -10,
         characterHeight: '100%',
         characterBottom: -260,
         characterTranslateX: 0,

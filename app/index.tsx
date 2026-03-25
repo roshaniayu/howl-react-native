@@ -304,6 +304,7 @@ export default function HomeScreen() {
               styles.scenery,
             ]}
             contentFit="cover"
+            contentPosition="top"
           />
         </Animated.View>
         <Animated.View
@@ -322,6 +323,7 @@ export default function HomeScreen() {
               styles.character,
             ]}
             contentFit="cover"
+            contentPosition="top"
           />
         </Animated.View>
       </View>
