@@ -17,7 +17,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, Modal as RNModal, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { CalendarProvider, WeekCalendar } from 'react-native-calendars';
 
 const TARGET_IMAGE_BYTES = 500 * 1024;
@@ -80,6 +80,7 @@ export default function SessionHistoryScreen() {
   const [selectedDatePlayedTotalTime, setSelectedDatePlayedTotalTime] = useState(0);
   const [isLoadingReflections, setIsLoadingReflections] = useState(false);
   const [markedDateKeys, setMarkedDateKeys] = useState<string[]>([]);
+  const [fullPhotoUri, setFullPhotoUri] = useState<string | null>(null);
 
   const todayKey = getLocalDateKey();
   const isSelectedToday = selectedDate === todayKey;
@@ -306,186 +307,207 @@ export default function SessionHistoryScreen() {
   }, [authError]);
 
   return (
-    <Modal
-      onClose={closeModal}
-      backgroundColor={HowlColors.blue_100}
-      titleSection={
-        <View style={styles.headerSection}>
-          <Pressable style={styles.closeButton} onPress={closeModal}>
-            <Image source={require('@/assets/icons/icon-close.png')} style={styles.closeIcon} contentFit="contain" />
-          </Pressable>
-          <Text style={styles.title}>Session History</Text>
-        </View>
-      }
-      contentSection={
-        <View style={styles.middleSection}>
-          {initializing ? (
-            <Text style={styles.subtitle}>Checking your saved session...</Text>
-          ) : user ? (
-            <View style={styles.sessionContainer}>
-              <View style={styles.usernameContainer}>
-                <Text style={styles.welcomeText}>
-                  Welcome, <Text style={styles.welcomeTextBold}>{user.displayName || user.email || 'User'}</Text>
-                </Text>
-                <Text style={styles.sessionText}>Email: {user.email || '-'}</Text>
-                <Pressable style={styles.signOutButton} onPress={signOut}>
-                  <Text style={styles.signOutButtonText}>Sign Out</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.scrollContainer}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={{ width: calendarCardWidth }}>
-                  <Text style={styles.monthYearLabel}>{selectedDateLabel}</Text>
-                  <CalendarProvider date={selectedDate} onDateChanged={setSelectedDate}>
-                    <WeekCalendar
-                      calendarWidth={weekCalendarWidth}
-                      style={[styles.weekCalendar, { width: weekCalendarWidth }]}
-                      firstDay={1}
-                      onDayPress={(day) => setSelectedDate(day.dateString)}
-                      markedDates={markedDates}
-                      theme={weekCalendarTheme}
-                    />
-                  </CalendarProvider>
+    <>
+      <Modal
+        onClose={closeModal}
+        backgroundColor={HowlColors.blue_100}
+        titleSection={
+          <View style={styles.headerSection}>
+            <Pressable style={styles.closeButton} onPress={closeModal}>
+              <Image source={require('@/assets/icons/icon-close.png')} style={styles.closeIcon} contentFit="contain" />
+            </Pressable>
+            <Text style={styles.title}>Session History</Text>
+          </View>
+        }
+        contentSection={
+          <View style={styles.middleSection}>
+            {initializing ? (
+              <Text style={styles.subtitle}>Checking your saved session...</Text>
+            ) : user ? (
+              <View style={styles.sessionContainer}>
+                <View style={styles.usernameContainer}>
+                  <Text style={styles.welcomeText}>
+                    Welcome, <Text style={styles.welcomeTextBold}>{user.displayName || user.email || 'User'}</Text>
+                  </Text>
+                  <Text style={styles.sessionText}>Email: {user.email || '-'}</Text>
+                  <Pressable style={styles.signOutButton} onPress={signOut}>
+                    <Text style={styles.signOutButtonText}>Sign Out</Text>
+                  </Pressable>
                 </View>
-
-                <View style={styles.historyContainer}>
-                  {isLoadingReflections ? (
-                    <View style={styles.loadingContainer}>
-                      <Text style={styles.sessionText}>Loading reflections...</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.historyContentContainer}>
-                      {selectedDatePlayedSound ? (
-                        <View style={styles.soundStatusContainer}>
-                          <Image
-                            source={require('@/assets/logo/howl-logo.png')}
-                            style={styles.soundStatusLogo}
-                            contentFit="contain"
-                          />
-                          <View style={styles.soundStatusTextContainer}>
-                            <Text style={styles.soundStatusBoldText}>You have played a sound on this date.{"\n"}
-                              <Text style={styles.soundStatusText}>Total time played: </Text>{formatDuration(selectedDatePlayedTotalTime)}</Text>
-                          </View>
-                        </View>
-                      ) : (
-                        <Text style={styles.sessionText}>You did not play a sound on this date.</Text>
-                      )}
-
-                      {reflections.length > 0 ? (
-                        <View style={styles.reflectionContainer}>
-                          <Text style={styles.reflectionTitle}>Your Reflection</Text>
-                          {reflections.map((reflection) => (
-                            <View key={reflection.id} style={styles.reflectionItem}>
-                              {reflection.imageBase64 ? (
-                                <Image
-                                  source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
-                                  style={styles.reflectionImage}
-                                  contentFit="cover"
-                                />
-                              ) : null}
-                              <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      ) : isSelectedToday ? (
-                        <View style={styles.formCard}>
-                          <Text style={styles.formTitle}>New Session Entry</Text>
-
-                          <TextInput
-                            value={entryNotes}
-                            onChangeText={setEntryNotes}
-                            placeholder="Write your notes"
-                            placeholderTextColor={HowlColors.gray_80}
-                            multiline
-                            style={[styles.formInput, styles.formTextarea]}
-                          />
-
-                          <Text style={styles.mediaLabel}>Photo (Optional)</Text>
-                          <View style={styles.mediaSelectorRow}>
-                            <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
-                              <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
-                                {imageBase64 ? 'Change Photo' : 'Add Photo'}
-                              </Text>
-                            </Pressable>
-                          </View>
-
-                          {imagePreviewUri ? (
-                            <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
-                          ) : null}
-
-                          <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
-                            <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-                          </Pressable>
-
-                          {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
-                        </View>
-                      ) : (
-                        <Text style={styles.sessionText}>You missed to reflect on this date :(</Text>
-                      )}
-                    </View>
-                  )}
-
-                  {!isLoadingReflections && isSelectedToday && reflections.length === 0 ? (
-                    <View style={styles.formCard}>
-                      <Text style={styles.formTitle}>New Session Entry</Text>
-
-                      <TextInput
-                        value={entryNotes}
-                        onChangeText={setEntryNotes}
-                        placeholder="Write your notes"
-                        placeholderTextColor={HowlColors.gray_80}
-                        multiline
-                        style={[styles.formInput, styles.formTextarea]}
+                <ScrollView
+                  style={styles.scrollContainer}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <View style={{ width: calendarCardWidth }}>
+                    <Text style={styles.monthYearLabel}>{selectedDateLabel}</Text>
+                    <CalendarProvider date={selectedDate} onDateChanged={setSelectedDate}>
+                      <WeekCalendar
+                        calendarWidth={weekCalendarWidth}
+                        style={[styles.weekCalendar, { width: weekCalendarWidth }]}
+                        firstDay={1}
+                        onDayPress={(day) => setSelectedDate(day.dateString)}
+                        markedDates={markedDates}
+                        theme={weekCalendarTheme}
                       />
+                    </CalendarProvider>
+                  </View>
 
-                      <Text style={styles.mediaLabel}>Photo (Optional)</Text>
-                      <View style={styles.mediaSelectorRow}>
-                        <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
-                          <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
-                            {imageBase64 ? 'Change Photo' : 'Add Photo'}
-                          </Text>
-                        </Pressable>
+                  <View style={styles.historyContainer}>
+                    {isLoadingReflections ? (
+                      <View style={styles.loadingContainer}>
+                        <Text style={styles.sessionText}>Loading reflections...</Text>
                       </View>
+                    ) : (
+                      <View style={styles.historyContentContainer}>
+                        {selectedDatePlayedSound ? (
+                          <View style={styles.soundStatusContainer}>
+                            <Image
+                              source={require('@/assets/logo/howl-logo.png')}
+                              style={styles.soundStatusLogo}
+                              contentFit="contain"
+                            />
+                            <View style={styles.soundStatusTextContainer}>
+                              <Text style={styles.soundStatusBoldText}>You have played a sound on this date.{"\n"}
+                                <Text style={styles.soundStatusText}>Total time played: </Text>{formatDuration(selectedDatePlayedTotalTime)}</Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <Text style={styles.sessionText}>You did not play a sound on this date.</Text>
+                        )}
 
-                      {imagePreviewUri ? (
-                        <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
-                      ) : null}
+                        {reflections.length > 0 ? (
+                          <View style={styles.reflectionContainer}>
+                            <Text style={styles.reflectionTitle}>Your Reflection</Text>
+                            {reflections.map((reflection) => (
+                              <View key={reflection.id} style={styles.reflectionItem}>
+                                {reflection.imageBase64 ? (
+                                  <Pressable onPress={() => setFullPhotoUri(`data:image/jpeg;base64,${reflection.imageBase64}`)}>
+                                    <Image
+                                      source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
+                                      style={styles.reflectionImage}
+                                      contentFit="cover"
+                                    />
+                                  </Pressable>
+                                ) : null}
+                                <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : isSelectedToday ? (
+                          <View style={styles.formCard}>
+                            <Text style={styles.formTitle}>New Session Entry</Text>
 
-                      <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
-                        <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-                      </Pressable>
+                            <TextInput
+                              value={entryNotes}
+                              onChangeText={setEntryNotes}
+                              placeholder="Write your notes"
+                              placeholderTextColor={HowlColors.gray_80}
+                              multiline
+                              style={[styles.formInput, styles.formTextarea]}
+                            />
 
-                      {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
-                    </View>
-                  ) : null}
-                </View>
-              </ScrollView>
-            </ View>
-          ) : (
-            <View style={styles.signInContainer}>
-              <Text style={styles.subtitle}>To try this feature, please sign in with your Google account.</Text>
-              <GoogleSigninButton
-                size={GoogleSigninButton.Size.Wide}
-                color={GoogleSigninButton.Color.Light}
-                onPress={signIn}
-                style={styles.signInButton}
-              />
-            </View>
-          )}
+                            <Text style={styles.mediaLabel}>Photo (Optional)</Text>
+                            <View style={styles.mediaSelectorRow}>
+                              <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
+                                <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
+                                  {imageBase64 ? 'Change Photo' : 'Add Photo'}
+                                </Text>
+                              </Pressable>
+                            </View>
 
-          {error ? (
-            <View style={styles.errorBadge}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-        </View>
-      }
-      footerSection={< View style={styles.footerSection} />}
-    />
+                            {imagePreviewUri ? (
+                              <Pressable onPress={() => setFullPhotoUri(imagePreviewUri)}>
+                                <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
+                              </Pressable>
+                            ) : null}
+
+                            <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
+                              <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
+                            </Pressable>
+
+                            {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
+                          </View>
+                        ) : (
+                          <Text style={styles.sessionText}>You missed to reflect on this date :(</Text>
+                        )}
+                      </View>
+                    )}
+
+                    {!isLoadingReflections && isSelectedToday && reflections.length === 0 ? (
+                      <View style={styles.formCard}>
+                        <Text style={styles.formTitle}>New Session Entry</Text>
+
+                        <TextInput
+                          value={entryNotes}
+                          onChangeText={setEntryNotes}
+                          placeholder="Write your notes"
+                          placeholderTextColor={HowlColors.gray_80}
+                          multiline
+                          style={[styles.formInput, styles.formTextarea]}
+                        />
+
+                        <Text style={styles.mediaLabel}>Photo (Optional)</Text>
+                        <View style={styles.mediaSelectorRow}>
+                          <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
+                            <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
+                              {imageBase64 ? 'Change Photo' : 'Add Photo'}
+                            </Text>
+                          </Pressable>
+                        </View>
+
+                        {imagePreviewUri ? (
+                          <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
+                        ) : null}
+
+                        <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
+                          <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
+                        </Pressable>
+
+                        {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
+                      </View>
+                    ) : null}
+                  </View>
+                </ScrollView>
+              </ View>
+            ) : (
+              <View style={styles.signInContainer}>
+                <Text style={styles.subtitle}>To try this feature, please sign in with your Google account.</Text>
+                <GoogleSigninButton
+                  size={GoogleSigninButton.Size.Wide}
+                  color={GoogleSigninButton.Color.Light}
+                  onPress={signIn}
+                  style={styles.signInButton}
+                />
+              </View>
+            )}
+
+            {error ? (
+              <View style={styles.errorBadge}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+          </View>
+        }
+        footerSection={< View style={styles.footerSection} />}
+      />
+
+      <RNModal
+        visible={Boolean(fullPhotoUri)}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        presentationStyle="overFullScreen"
+        onRequestClose={() => setFullPhotoUri(null)}
+      >
+        <Pressable style={styles.fullPhotoOverlay} onPress={() => setFullPhotoUri(null)}>
+          {fullPhotoUri ? <Image source={{ uri: fullPhotoUri }} style={styles.fullPhotoImage} contentFit="contain" /> : null}
+          <Text style={styles.fullPhotoHint}>Tap anywhere to close</Text>
+        </Pressable>
+      </RNModal>
+    </>
   );
 }
 
@@ -784,5 +806,27 @@ const styles = StyleSheet.create({
     color: '#294A68',
     fontFamily: 'NunitoSans-SemiBold',
     textAlign: 'center',
+  },
+  fullPhotoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.80)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+    zIndex: 20,
+  },
+  fullPhotoImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  fullPhotoHint: {
+    position: 'absolute',
+    bottom: 80,
+    color: HowlColors.white,
+    fontSize: 16,
+    fontFamily: 'NunitoSans-Bold',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 999,
   },
 });
