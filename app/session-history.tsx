@@ -82,6 +82,10 @@ export default function SessionHistoryScreen() {
   const isSelectedToday = selectedDate === todayKey;
   const calendarCardWidth = screenWidth - 40;
   const weekCalendarWidth = calendarCardWidth;
+  const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   const fetchMarkedDates = useCallback(async () => {
     if (!user) {
@@ -328,6 +332,7 @@ export default function SessionHistoryScreen() {
                 keyboardShouldPersistTaps="handled"
               >
                 <View style={{ width: calendarCardWidth }}>
+                  <Text style={styles.monthYearLabel}>{selectedDateLabel}</Text>
                   <CalendarProvider date={selectedDate} onDateChanged={setSelectedDate}>
                     <WeekCalendar
                       calendarWidth={weekCalendarWidth}
@@ -340,72 +345,74 @@ export default function SessionHistoryScreen() {
                   </CalendarProvider>
                 </View>
 
-                {isLoadingReflections ? <Text style={styles.infoText}>Loading reflections...</Text> : null}
+                <View style={styles.reflectionContainer}>
+                  {isLoadingReflections ? <Text style={styles.infoText}>Loading reflections...</Text> : null}
 
-                {!isLoadingReflections ? (
-                  <Text style={styles.selectedDateSoundStatus}>
-                    Sound played on this date: {selectedDatePlayedSound ? 'Yes' : 'No'}
-                  </Text>
-                ) : null}
+                  {!isLoadingReflections ? (
+                    <Text style={styles.selectedDateSoundStatus}>
+                      Sound played on this date: {selectedDatePlayedSound ? 'Yes' : 'No'}
+                    </Text>
+                  ) : null}
 
-                {!isLoadingReflections && reflections.length > 0 ? (
-                  <View style={styles.formCard}>
-                    <Text style={styles.formTitle}>Your Reflection</Text>
-                    {reflections.map((reflection) => (
-                      <View key={reflection.id} style={styles.reflectionItem}>
-                        <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
-                        <Text style={styles.playedSoundText}>
-                          Sound played: {reflection.playedSound ? 'Yes' : 'No'}
-                        </Text>
-                        {reflection.imageBase64 ? (
-                          <Image
-                            source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
-                            style={styles.imagePreview}
-                            contentFit="contain"
-                          />
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-
-                {!isLoadingReflections && isSelectedToday && reflections.length === 0 ? (
-                  <View style={styles.formCard}>
-                    <Text style={styles.formTitle}>New Session Entry</Text>
-
-                    <TextInput
-                      value={entryNotes}
-                      onChangeText={setEntryNotes}
-                      placeholder="Write your notes"
-                      placeholderTextColor={HowlColors.gray_80}
-                      multiline
-                      style={[styles.formInput, styles.formTextarea]}
-                    />
-
-                    <Text style={styles.mediaLabel}>Photo (Optional)</Text>
-                    <View style={styles.mediaSelectorRow}>
-                      <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
-                        <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
-                          {imageBase64 ? 'Change Photo' : 'Add Photo'}
-                        </Text>
-                      </Pressable>
+                  {!isLoadingReflections && reflections.length > 0 ? (
+                    <View style={styles.formCard}>
+                      <Text style={styles.formTitle}>Your Reflection</Text>
+                      {reflections.map((reflection) => (
+                        <View key={reflection.id} style={styles.reflectionItem}>
+                          <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
+                          <Text style={styles.playedSoundText}>
+                            Sound played: {reflection.playedSound ? 'Yes' : 'No'}
+                          </Text>
+                          {reflection.imageBase64 ? (
+                            <Image
+                              source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
+                              style={styles.imagePreview}
+                              contentFit="contain"
+                            />
+                          ) : null}
+                        </View>
+                      ))}
                     </View>
+                  ) : null}
 
-                    {imagePreviewUri ? (
-                      <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
-                    ) : null}
+                  {!isLoadingReflections && isSelectedToday && reflections.length === 0 ? (
+                    <View style={styles.formCard}>
+                      <Text style={styles.formTitle}>New Session Entry</Text>
 
-                    <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
-                      <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-                    </Pressable>
+                      <TextInput
+                        value={entryNotes}
+                        onChangeText={setEntryNotes}
+                        placeholder="Write your notes"
+                        placeholderTextColor={HowlColors.gray_80}
+                        multiline
+                        style={[styles.formInput, styles.formTextarea]}
+                      />
 
-                    {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
-                  </View>
-                ) : null}
+                      <Text style={styles.mediaLabel}>Photo (Optional)</Text>
+                      <View style={styles.mediaSelectorRow}>
+                        <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
+                          <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
+                            {imageBase64 ? 'Change Photo' : 'Add Photo'}
+                          </Text>
+                        </Pressable>
+                      </View>
 
-                {!isLoadingReflections && !isSelectedToday && reflections.length === 0 ? (
-                  <Text style={styles.infoText}>you dont have any reflections this date :(</Text>
-                ) : null}
+                      {imagePreviewUri ? (
+                        <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
+                      ) : null}
+
+                      <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
+                        <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
+                      </Pressable>
+
+                      {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
+                    </View>
+                  ) : null}
+
+                  {!isLoadingReflections && !isSelectedToday && reflections.length === 0 ? (
+                    <Text style={styles.infoText}>you dont have any reflections this date :(</Text>
+                  ) : null}
+                </View>
               </ScrollView>
             </View>
           ) : (
@@ -419,7 +426,6 @@ export default function SessionHistoryScreen() {
               />
             </View>
           )}
-
 
           {error ? (
             <View style={styles.errorBadge}>
@@ -465,7 +471,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     alignItems: 'center',
-    marginTop: 16,
+    paddingTop: 12,
     paddingBottom: 32,
   },
   closeButton: {
@@ -514,7 +520,7 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     marginTop: 4,
     borderRadius: 50,
     backgroundColor: HowlColors.gray_80,
@@ -527,8 +533,18 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans-Bold',
     textAlign: 'center',
   },
+  monthYearLabel: {
+    color: HowlColors.gray_80,
+    fontSize: 18,
+    fontFamily: 'NunitoSans-Bold',
+    textAlign: 'center',
+  },
   weekCalendar: {
     alignSelf: 'center',
+  },
+  reflectionContainer: {
+    borderTopColor: HowlColors.blue_70,
+    borderTopWidth: 1,
   },
   formCard: {
     width: 364,
