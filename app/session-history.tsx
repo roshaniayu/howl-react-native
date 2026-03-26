@@ -1,8 +1,14 @@
 import { Modal } from '@/components/ui/modal';
 import { HowlColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getApp } from '@react-native-firebase/app';
-import { addDoc, collection, getDocs, getFirestore, query, serverTimestamp, where, type FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import {
+  fetchMarkedDateKeys,
+  fetchReflectionsByDate as fetchReflectionsByDateFromDb,
+  getLocalDateKey,
+  getPlayedSoundStatusForDate,
+  saveReflectionForDate,
+  type ReflectionDoc,
+} from '@/services/reflections';
 import { GoogleSigninButton, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -14,20 +20,6 @@ import { CalendarProvider, WeekCalendar } from 'react-native-calendars';
 
 const TARGET_IMAGE_BYTES = 500 * 1024;
 const MAX_BASE64_FOR_FIRESTORE_CHARS = 900000;
-
-type ReflectionDoc = {
-  id: string;
-  notes: string;
-  imageBase64: string | null;
-  dateKey: string;
-};
-
-const getLocalDateKey = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const estimateBytesFromBase64 = (base64: string) => {
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
@@ -82,17 +74,14 @@ export default function SessionHistoryScreen() {
   const [imagePreviewUri, setImagePreviewUri] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(getLocalDateKey());
   const [reflections, setReflections] = useState<ReflectionDoc[]>([]);
+  const [selectedDatePlayedSound, setSelectedDatePlayedSound] = useState(false);
   const [isLoadingReflections, setIsLoadingReflections] = useState(false);
   const [markedDateKeys, setMarkedDateKeys] = useState<string[]>([]);
 
   const todayKey = getLocalDateKey();
   const isSelectedToday = selectedDate === todayKey;
-  const calendarCardWidth = Math.min(screenWidth - 24, 364);
-  const weekCalendarWidth = calendarCardWidth - 20;
-
-  useEffect(() => {
-    setError(authError);
-  }, [authError]);
+  const calendarCardWidth = screenWidth - 40;
+  const weekCalendarWidth = calendarCardWidth;
 
   const fetchMarkedDates = useCallback(async () => {
     if (!user) {
@@ -101,23 +90,8 @@ export default function SessionHistoryScreen() {
     }
 
     try {
-      const firestore = getFirestore(getApp());
-      const reflectionsQuery = query(
-        collection(firestore, 'reflections'),
-        where('userId', '==', user.uid),
-      );
-
-      const snapshot = await getDocs(reflectionsQuery);
-      const keys = new Set<string>();
-
-      snapshot.docs.forEach((doc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
-        const data = doc.data() as { dateKey?: string };
-        if (data.dateKey) {
-          keys.add(data.dateKey);
-        }
-      });
-
-      setMarkedDateKeys(Array.from(keys));
+      const keys = await fetchMarkedDateKeys(user.uid);
+      setMarkedDateKeys(keys);
     } catch {
       setMarkedDateKeys([]);
     }
@@ -126,52 +100,32 @@ export default function SessionHistoryScreen() {
   const fetchReflectionsByDate = useCallback(async () => {
     if (!user) {
       setReflections([]);
+      setSelectedDatePlayedSound(false);
       return;
     }
 
     setIsLoadingReflections(true);
     try {
-      const firestore = getFirestore(getApp());
-      const reflectionsQuery = query(
-        collection(firestore, 'reflections'),
-        where('userId', '==', user.uid),
-        where('dateKey', '==', selectedDate),
-      );
-
-      const snapshot = await getDocs(reflectionsQuery);
-      const rows: ReflectionDoc[] = snapshot.docs.map((doc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
-        const data = doc.data() as { notes?: string; imageBase64?: string | null; dateKey?: string };
-        return {
-          id: doc.id,
-          notes: data.notes ?? '',
-          imageBase64: data.imageBase64 ?? null,
-          dateKey: data.dateKey ?? selectedDate,
-        };
-      });
-
+      const [rows, playedSound] = await Promise.all([
+        fetchReflectionsByDateFromDb(user.uid, selectedDate),
+        getPlayedSoundStatusForDate(user.uid, selectedDate),
+      ]);
       setReflections(rows);
+      setSelectedDatePlayedSound(playedSound);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'Failed to load reflections.';
       setFormMessage(message);
       setReflections([]);
+      setSelectedDatePlayedSound(false);
     } finally {
       setIsLoadingReflections(false);
     }
   }, [selectedDate, user]);
 
-  useEffect(() => {
-    void fetchReflectionsByDate();
-  }, [fetchReflectionsByDate]);
-
-  useEffect(() => {
-    void fetchMarkedDates();
-  }, [fetchMarkedDates]);
-
   const markedDates = markedDateKeys.reduce<Record<string, { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string; selectedDotColor?: string }>>(
     (accumulator, dateKey) => {
       accumulator[dateKey] = {
         marked: true,
-        dotColor: '#294A68',
       };
       return accumulator;
     },
@@ -181,8 +135,21 @@ export default function SessionHistoryScreen() {
   markedDates[selectedDate] = {
     ...markedDates[selectedDate],
     selected: true,
-    selectedColor: '#294A68',
-    selectedDotColor: '#FFFFFF',
+    selectedColor: HowlColors.white,
+    dotColor: HowlColors.blue_100,
+  };
+
+  const weekCalendarTheme: any = {
+    calendarBackground: 'transparent',
+    textSectionTitleColor: HowlColors.gray_80,
+    selectedDayBackgroundColor: HowlColors.white,
+    selectedDayTextColor: HowlColors.blue_100,
+    todayTextColor: HowlColors.gray_80,
+    dayTextColor: HowlColors.gray_80,
+    monthTextColor: HowlColors.gray_80,
+    arrowColor: HowlColors.gray_80,
+    dotColor: HowlColors.gray_80,
+    todayDotColor: HowlColors.gray_80,
   };
 
   const signIn = async () => {
@@ -280,11 +247,6 @@ export default function SessionHistoryScreen() {
       return;
     }
 
-    if (!entryNotes.trim()) {
-      setFormMessage('Please add your notes before saving.');
-      return;
-    }
-
     if (!isSelectedToday) {
       setFormMessage('You can only submit today reflections from this form.');
       return;
@@ -298,16 +260,12 @@ export default function SessionHistoryScreen() {
     setIsSaving(true);
 
     try {
-      const firestore = getFirestore(getApp());
-
-      await addDoc(collection(firestore, 'reflections'), {
+      await saveReflectionForDate({
         userId: user.uid,
         userEmail: user.email ?? null,
         notes: entryNotes.trim(),
         dateKey: selectedDate,
-        mediaType: imageBase64 ? 'image' : null,
         imageBase64: imageBase64 ?? null,
-        createdAt: serverTimestamp(),
       });
 
       setEntryNotes('');
@@ -324,6 +282,18 @@ export default function SessionHistoryScreen() {
     }
   };
 
+  useEffect(() => {
+    void fetchReflectionsByDate();
+  }, [fetchReflectionsByDate]);
+
+  useEffect(() => {
+    void fetchMarkedDates();
+  }, [fetchMarkedDates]);
+
+  useEffect(() => {
+    setError(authError);
+  }, [authError]);
+
   return (
     <Modal
       onClose={closeModal}
@@ -337,47 +307,46 @@ export default function SessionHistoryScreen() {
         </View>
       }
       contentSection={
-        <ScrollView
-          style={styles.middleSection}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.middleSection}>
           {initializing ? (
-            <View style={styles.signInContainer}>
-              <Text style={styles.subtitle}>Checking your saved session...</Text>
-            </View>
+            <Text style={styles.subtitle}>Checking your saved session...</Text>
           ) : user ? (
-            <View style={styles.profileContainer}>
+            <View style={styles.sessionContainer}>
               <View style={styles.usernameContainer}>
-                <Text style={styles.subtitle}>
-                  Welcome, <Text style={styles.subtitleBold}>{user.displayName || user.email || 'User'}</Text>
+                <Text style={styles.welcomeText}>
+                  Welcome, <Text style={styles.welcomeTextBold}>{user.displayName || user.email || 'User'}</Text>
                 </Text>
                 <Text style={styles.email}>Email: {user.email || '-'}</Text>
-
-                <View style={[styles.calendarCard, { width: calendarCardWidth }]}>
+                <Pressable style={styles.signOutButton} onPress={signOut}>
+                  <Text style={styles.signOutButtonText}>Sign Out</Text>
+                </Pressable>
+              </View>
+              <ScrollView
+                style={styles.scrollContainer}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={{ width: calendarCardWidth }}>
                   <CalendarProvider date={selectedDate} onDateChanged={setSelectedDate}>
                     <WeekCalendar
                       calendarWidth={weekCalendarWidth}
-                      style={styles.weekCalendar}
+                      style={[styles.weekCalendar, { width: weekCalendarWidth }]}
                       firstDay={1}
                       onDayPress={(day) => setSelectedDate(day.dateString)}
                       markedDates={markedDates}
-                      theme={{
-                        calendarBackground: '#F3F7FB',
-                        textSectionTitleColor: '#294A68',
-                        selectedDayBackgroundColor: '#294A68',
-                        selectedDayTextColor: '#FFFFFF',
-                        todayTextColor: '#1D4ED8',
-                        dayTextColor: '#1F2937',
-                        monthTextColor: '#1F2937',
-                        arrowColor: '#294A68',
-                      }}
+                      theme={weekCalendarTheme}
                     />
                   </CalendarProvider>
                 </View>
 
                 {isLoadingReflections ? <Text style={styles.infoText}>Loading reflections...</Text> : null}
+
+                {!isLoadingReflections ? (
+                  <Text style={styles.selectedDateSoundStatus}>
+                    Sound played on this date: {selectedDatePlayedSound ? 'Yes' : 'No'}
+                  </Text>
+                ) : null}
 
                 {!isLoadingReflections && reflections.length > 0 ? (
                   <View style={styles.formCard}>
@@ -385,6 +354,9 @@ export default function SessionHistoryScreen() {
                     {reflections.map((reflection) => (
                       <View key={reflection.id} style={styles.reflectionItem}>
                         <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
+                        <Text style={styles.playedSoundText}>
+                          Sound played: {reflection.playedSound ? 'Yes' : 'No'}
+                        </Text>
                         {reflection.imageBase64 ? (
                           <Image
                             source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
@@ -434,11 +406,7 @@ export default function SessionHistoryScreen() {
                 {!isLoadingReflections && !isSelectedToday && reflections.length === 0 ? (
                   <Text style={styles.infoText}>you dont have any reflections this date :(</Text>
                 ) : null}
-
-                <Pressable style={styles.signOutButton} onPress={signOut}>
-                  <Text style={styles.signOutButtonText}>Sign Out</Text>
-                </Pressable>
-              </View>
+              </ScrollView>
             </View>
           ) : (
             <View style={styles.signInContainer}>
@@ -452,12 +420,13 @@ export default function SessionHistoryScreen() {
             </View>
           )}
 
+
           {error ? (
             <View style={styles.errorBadge}>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
-        </ScrollView>
+        </View>
       }
       footerSection={<View style={styles.footerSection} />}
     />
@@ -473,15 +442,31 @@ const styles = StyleSheet.create({
   },
   middleSection: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
     width: '100%',
+    marginTop: 20,
+    gap: 16,
+  },
+  usernameContainer: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  scrollContainer: {
+    borderTopColor: HowlColors.gray_80,
+    borderTopWidth: 1,
   },
   scrollContent: {
     alignItems: 'center',
-    paddingHorizontal: 8,
+    marginTop: 16,
     paddingBottom: 32,
-  },
-  footerSection: {
-    width: '100%',
   },
   closeButton: {
     position: 'absolute',
@@ -510,33 +495,37 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans-Medium',
     fontWeight: 'normal',
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
-  subtitleBold: {
+  welcomeText: {
+    color: HowlColors.gray_80,
+    fontSize: 18,
+    fontFamily: 'NunitoSans-Medium',
+    fontWeight: 'normal',
+    textAlign: 'center',
+  },
+  welcomeTextBold: {
     fontFamily: 'NunitoSans-Bold',
-  },
-  profileContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    width: '100%',
-    marginTop: 20,
-  },
-  usernameContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
   },
   email: {
     color: HowlColors.gray_80,
     fontSize: 16,
     fontFamily: 'NunitoSans-Regular',
   },
-  calendarCard: {
-    width: 364,
-    borderRadius: 16,
-    backgroundColor: '#F3F7FB',
-    padding: 10,
-    marginTop: 8,
+  signOutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 4,
+    borderRadius: 50,
+    backgroundColor: HowlColors.gray_80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signOutButtonText: {
+    color: HowlColors.blue_100,
+    fontSize: 16,
+    fontFamily: 'NunitoSans-Bold',
+    textAlign: 'center',
   },
   weekCalendar: {
     alignSelf: 'center',
@@ -638,7 +627,21 @@ const styles = StyleSheet.create({
     color: HowlColors.gray_80,
     fontSize: 14,
     fontFamily: 'NunitoSans-Regular',
+    marginBottom: 6,
+  },
+  playedSoundText: {
+    color: HowlColors.gray_80,
+    fontSize: 13,
+    fontFamily: 'NunitoSans-SemiBold',
     marginBottom: 8,
+  },
+  selectedDateSoundStatus: {
+    width: 364,
+    color: '#F3F7FB',
+    fontSize: 14,
+    fontFamily: 'NunitoSans-SemiBold',
+    textAlign: 'left',
+    marginTop: 6,
   },
   infoText: {
     color: '#F3F7FB',
@@ -655,21 +658,6 @@ const styles = StyleSheet.create({
     width: 364,
     height: 60,
   },
-  signOutButton: {
-    width: 364,
-    height: 60,
-    marginTop: 16,
-    borderRadius: 4,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  signOutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: 'NunitoSans-Bold',
-    textAlign: 'center',
-  },
   errorBadge: {
     marginTop: 20,
     backgroundColor: '#DC2626',
@@ -685,5 +673,8 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     fontSize: 14,
     lineHeight: 20,
+  },
+  footerSection: {
+    width: '100%',
   },
 });

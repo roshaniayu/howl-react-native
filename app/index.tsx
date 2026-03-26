@@ -1,5 +1,7 @@
 import { AmbienceId, getAmbienceById, parseAmbienceId } from '@/constants/ambiences';
 import { HowlColors } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
+import { getLocalDateKey, trackSoundPlayedForDate } from '@/services/reflections';
 import { Audio } from 'expo-av';
 import { HorizontalPicker } from 'expo-horizontal-picker';
 import { Image } from 'expo-image';
@@ -36,6 +38,7 @@ function formatRemainingTime(totalSeconds: number) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { ambienceId: ambienceIdParam } = useLocalSearchParams<{ ambienceId?: string }>();
   const [selectedDuration, setSelectedDuration] = useState<(typeof durations)[number]>(durations[0]);
   const [selectedAmbienceId, setSelectedAmbienceId] = useState<AmbienceId>(1);
@@ -277,6 +280,22 @@ export default function HomeScreen() {
 
     wasPlayingRef.current = isPlaying;
   }, [isPlaying, totalSeconds, remainingSeconds, router]);
+
+  useEffect(() => {
+    if (!isPlaying || !user) {
+      return;
+    }
+
+    const syncPlayedState = async () => {
+      try {
+        await trackSoundPlayedForDate(user.uid, getLocalDateKey(), user.email ?? null);
+      } catch (error) {
+        console.warn('Failed to track sound playback state', error);
+      }
+    };
+
+    void syncPlayedState();
+  }, [isPlaying, user]);
 
   return (
     <View style={styles.container}>
