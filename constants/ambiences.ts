@@ -1,6 +1,6 @@
 export type AmbienceId = 1 | 2 | 3;
 
-export type AmbienceOption = {
+type AmbienceOption = {
   id: AmbienceId;
   title: string;
   bgImage: number;

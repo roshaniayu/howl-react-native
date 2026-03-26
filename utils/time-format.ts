@@ -1,4 +1,4 @@
-export function formatTimeUnit(value: number, singular: string, plural: string): string {
+function formatTimeUnit(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 

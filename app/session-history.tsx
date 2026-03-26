@@ -86,7 +86,6 @@ export default function SessionHistoryScreen() {
   const isSelectedToday = selectedDate === todayKey;
   const isEntryNotesEmpty = entryNotes.trim().length === 0;
   const calendarCardWidth = screenWidth - 40;
-  const weekCalendarWidth = calendarCardWidth;
   const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -346,8 +345,8 @@ export default function SessionHistoryScreen() {
                     <Text style={styles.monthYearLabel}>{selectedDateLabel}</Text>
                     <CalendarProvider date={selectedDate} onDateChanged={setSelectedDate}>
                       <WeekCalendar
-                        calendarWidth={weekCalendarWidth}
-                        style={[styles.weekCalendar, { width: weekCalendarWidth }]}
+                        calendarWidth={calendarCardWidth}
+                        style={[styles.weekCalendar, { width: calendarCardWidth }]}
                         firstDay={1}
                         maxDate={todayKey}
                         disableAllTouchEventsForDisabledDays
@@ -407,8 +406,8 @@ export default function SessionHistoryScreen() {
                               <View style={styles.reflectionEntryPhotoRow}>
                                 <Text style={styles.reflectionEntryPhotoLabel}>Photo (Optional)</Text>
                                 <View style={styles.reflectionEntryPhotoButtonRow}>
-                                  <Pressable style={[styles.reflectionEntryPhotoButton, styles.reflectionEntryPhotoButtonActive]} onPress={openCameraMenu}>
-                                    <Text style={[styles.reflectionEntryPhotoButtonText, styles.reflectionEntryPhotoButtonTextActive]}>
+                                  <Pressable style={styles.reflectionEntryPhotoButton} onPress={openCameraMenu}>
+                                    <Text style={styles.reflectionEntryPhotoButtonText}>
                                       {imageBase64 ? 'Change Photo' : 'Upload Photo'}
                                     </Text>
                                   </Pressable>
@@ -740,18 +739,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: HowlColors.gray_100,
-  },
-  reflectionEntryPhotoButtonActive: {
     backgroundColor: HowlColors.blue_100,
   },
   reflectionEntryPhotoButtonText: {
     color: HowlColors.white,
     fontFamily: 'NunitoSans-Bold',
     fontSize: 16,
-  },
-  reflectionEntryPhotoButtonTextActive: {
-    color: HowlColors.white,
   },
   reflectionEntryInput: {
     borderWidth: 1,
