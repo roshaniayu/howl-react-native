@@ -1,50 +1,90 @@
-# Welcome to your Expo app 👋
+# Howl: Sleep Audio & Reflection Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This repository contains the source code for _Howl_, an Android-only ambient sound and reflection mobile application, created by **Roshani Ayu Pranasti (G2504973A)**. This individual project is part of the IN6222 Mobile & Ubiquitous Applications Development, Wee Kim Wee School of Communication and Information, Nanyang Technological University, 2026.
 
-## Get started
+## Application Definition
 
-1. Install dependencies
+Howl is an ambient sound and reflection application designed specifically to aid individuals experiencing sleep disorders, anxiety, or insomnia. The app facilitates a smooth transition to sleep by providing auditory accompaniment, acting as a soothing distraction from racing internal thoughts or disruptive surrounding noises.
 
+The application integrates customizable sleep timers, dynamic visual ambiences, and a secure digital diary. By combining timed instrumental soundscapes with daily reflection logging, Howl offers users a comforting and consistent nighttime routine within a single mobile experience.
+
+### Key Features
+- **Timed Audio Playback**: Looping, soothing instrumental sounds powered by a customizable sleep timer to softly send users into a slumber.
+- **Dynamic Themes & Visual Ambience**: Selectable environments that simultaneously update the auditory profile and trigger relaxing, continuous background animations.
+- **Comprehensive Sleep Tracking**: Automated session completion tracking that logs daily sound engagement and calculates total listening duration to monitor sleep ritual consistency.
+- **Secure Digital Diary & Calendar**: A private space for users to write daily reflections and upload photos, featuring an organized reflection history accessible via intuitive weekly calendar navigation.
+- **Cloud Infrastructure & Authentication**: Secure Google Sign-In integration paired with robust Firebase-based data storage to protect user sessions and synchronize private journal entries.
+
+## Installation
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm (v9 or higher)
+- Android Studio (latest stable) with Android SDK installed
+- Java JDK 17 or higher
+- A connected Android device or Android emulator
+- Firebase project configured for Android (Auth + Firestore)
+
+### Android Project Setup
+1. Clone and enter the repository:
+   ```bash
+   git clone <your-repo-url>
+   cd howl-react-native
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Configure Firebase for Android:
+   Add your Firebase Android config file in both paths:
+   - `google-services.json`
+   - `android/app/google-services.json`
 
+4. Ensure Google Sign-In and Firebase Auth are enabled in your Firebase project.
+
+## Build and Run
+
+### Android (Development)
+1. Start an emulator from Android Studio, or connect a physical Android device.
+
+2. Build and run on Android:
+   ```bash
+   npx expo run:android
+   ```
+
+3. Optional clean prebuild step (use this when native Android setup is out of sync):
+   ```bash
+   npx expo prebuild --clean --platform android
+   ```
+
+4. For Metro bundler only:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Environment Links
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Android App (Emulator/Device)**: Installed via `npx expo run:android`
+- **Firebase Console**: https://console.firebase.google.com/
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Tech Stack
 
-## Get a fresh project
+### Mobile Frontend
+- React Native with TypeScript
+- Expo (Expo Router)
+- React Native Calendars
+- Expo AV, Expo Image, Expo Image Picker
 
-When you're ready, run:
+### Backend Services
+- Firebase Authentication
+- Cloud Firestore
+- Google Sign-In for React Native
 
-```bash
-npm run reset-project
-```
+## Platform Scope
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+This project is currently supported for **Android only**.
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- iOS build flow is not maintained for this submission.
+- Web build is not part of the target deliverable.
