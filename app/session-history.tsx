@@ -84,6 +84,7 @@ export default function SessionHistoryScreen() {
 
   const todayKey = getLocalDateKey();
   const isSelectedToday = selectedDate === todayKey;
+  const isEntryNotesEmpty = entryNotes.trim().length === 0;
   const calendarCardWidth = screenWidth - 40;
   const weekCalendarWidth = calendarCardWidth;
   const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
@@ -158,6 +159,7 @@ export default function SessionHistoryScreen() {
     selectedDayTextColor: HowlColors.blue_100,
     todayTextColor: HowlColors.gray_80,
     dayTextColor: HowlColors.gray_80,
+    textDisabledColor: HowlColors.dark_blue,
     monthTextColor: HowlColors.gray_80,
     arrowColor: HowlColors.gray_80,
     dotColor: HowlColors.gray_80,
@@ -347,6 +349,8 @@ export default function SessionHistoryScreen() {
                         calendarWidth={weekCalendarWidth}
                         style={[styles.weekCalendar, { width: weekCalendarWidth }]}
                         firstDay={1}
+                        maxDate={todayKey}
+                        disableAllTouchEventsForDisabledDays
                         onDayPress={(day) => setSelectedDate(day.dateString)}
                         markedDates={markedDates}
                         theme={weekCalendarTheme}
@@ -369,105 +373,91 @@ export default function SessionHistoryScreen() {
                               contentFit="contain"
                             />
                             <View style={styles.soundStatusTextContainer}>
-                              <Text style={styles.soundStatusBoldText}>You have played a sound on this date.{"\n"}
+                              <Text style={styles.soundStatusBoldText}>{isSelectedToday ? 'You have played sounds today.\n' : 'You played sounds on this date.\n'}
                                 <Text style={styles.soundStatusText}>Total time played: </Text>{formatDuration(selectedDatePlayedTotalTime)}</Text>
                             </View>
                           </View>
                         ) : (
-                          <Text style={styles.sessionText}>You did not play a sound on this date.</Text>
+                          <Text style={styles.sessionText}>{isSelectedToday ? 'You have not played any sounds today.' : 'You did not play any sounds on this date.'}</Text>
                         )}
 
-                        {reflections.length > 0 ? (
-                          <View style={styles.reflectionContainer}>
-                            <Text style={styles.reflectionTitle}>Your Reflection</Text>
-                            {reflections.map((reflection) => (
-                              <View key={reflection.id} style={styles.reflectionItem}>
-                                {reflection.imageBase64 ? (
-                                  <Pressable onPress={() => setFullPhotoUri(`data:image/jpeg;base64,${reflection.imageBase64}`)}>
-                                    <Image
-                                      source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
-                                      style={styles.reflectionImage}
-                                      contentFit="cover"
-                                    />
+                        {
+                          reflections.length > 0 ? (
+                            <View style={styles.reflectionContainer}>
+                              <Text style={styles.reflectionTitle}>Your Reflection</Text>
+                              {reflections.map((reflection) => (
+                                <View key={reflection.id} style={styles.reflectionItem}>
+                                  {reflection.imageBase64 ? (
+                                    <Pressable onPress={() => setFullPhotoUri(`data:image/jpeg;base64,${reflection.imageBase64}`)}>
+                                      <Image
+                                        source={{ uri: `data:image/jpeg;base64,${reflection.imageBase64}` }}
+                                        style={styles.reflectionImage}
+                                        contentFit="cover"
+                                      />
+                                    </Pressable>
+                                  ) : null}
+                                  <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          ) : isSelectedToday ? (
+                            <View style={styles.reflectionEntryContainer}>
+                              <Text style={styles.reflectionEntryTitle}>How was your day?</Text>
+                              <Text style={styles.reflectionEntrySubtitle}>Reflect on how your day went to ease your mind.</Text>
+                              <View style={styles.reflectionEntryPhotoRow}>
+                                <Text style={styles.reflectionEntryPhotoLabel}>Photo (Optional)</Text>
+                                <View style={styles.reflectionEntryPhotoButtonRow}>
+                                  <Pressable style={[styles.reflectionEntryPhotoButton, styles.reflectionEntryPhotoButtonActive]} onPress={openCameraMenu}>
+                                    <Text style={[styles.reflectionEntryPhotoButtonText, styles.reflectionEntryPhotoButtonTextActive]}>
+                                      {imageBase64 ? 'Change Photo' : 'Upload Photo'}
+                                    </Text>
                                   </Pressable>
-                                ) : null}
-                                <Text style={styles.reflectionNotes}>{reflection.notes}</Text>
+                                </View>
                               </View>
-                            ))}
-                          </View>
-                        ) : isSelectedToday ? (
-                          <View style={styles.formCard}>
-                            <Text style={styles.formTitle}>New Session Entry</Text>
 
-                            <TextInput
-                              value={entryNotes}
-                              onChangeText={setEntryNotes}
-                              placeholder="Write your notes"
-                              placeholderTextColor={HowlColors.gray_80}
-                              multiline
-                              style={[styles.formInput, styles.formTextarea]}
-                            />
+                              {imagePreviewUri ? (
+                                <Pressable onPress={() => setFullPhotoUri(imagePreviewUri)}>
+                                  <Image
+                                    source={{ uri: imagePreviewUri }}
+                                    style={styles.reflectionImage}
+                                    contentFit="cover" />
+                                </Pressable>
+                              ) : null}
 
-                            <Text style={styles.mediaLabel}>Photo (Optional)</Text>
-                            <View style={styles.mediaSelectorRow}>
-                              <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
-                                <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
-                                  {imageBase64 ? 'Change Photo' : 'Add Photo'}
+                              <TextInput
+                                value={entryNotes}
+                                onChangeText={setEntryNotes}
+                                placeholder="Write your notes"
+                                placeholderTextColor={HowlColors.gray_100}
+                                multiline
+                                style={[styles.reflectionEntryInput, styles.reflectionEntryTextarea]}
+                              />
+
+                              <Pressable
+                                style={[
+                                  styles.reflectionEntrySaveButton,
+                                  (isSaving || isEntryNotesEmpty) && styles.reflectionEntrySaveButtonDisabled,
+                                ]}
+                                onPress={saveSessionEntry}
+                                disabled={isSaving || isEntryNotesEmpty}
+                              >
+                                <Text
+                                  style={[
+                                    styles.reflectionEntrySaveButtonText,
+                                    (isSaving || isEntryNotesEmpty) && styles.reflectionEntrySaveButtonTextDisabled,
+                                  ]}
+                                >
+                                  {isSaving ? 'Saving...' : 'Save Reflection'}
                                 </Text>
                               </Pressable>
+
+                              {formMessage ? <Text style={styles.reflectionEntryMessage}>{formMessage}</Text> : null}
                             </View>
-
-                            {imagePreviewUri ? (
-                              <Pressable onPress={() => setFullPhotoUri(imagePreviewUri)}>
-                                <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
-                              </Pressable>
-                            ) : null}
-
-                            <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
-                              <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-                            </Pressable>
-
-                            {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
-                          </View>
-                        ) : (
-                          <Text style={styles.sessionText}>You missed to reflect on this date :(</Text>
-                        )}
+                          ) : (
+                            <Text style={styles.sessionText}>You missed to reflect on this date :(</Text>
+                          )}
                       </View>
                     )}
-
-                    {!isLoadingReflections && isSelectedToday && reflections.length === 0 ? (
-                      <View style={styles.formCard}>
-                        <Text style={styles.formTitle}>New Session Entry</Text>
-
-                        <TextInput
-                          value={entryNotes}
-                          onChangeText={setEntryNotes}
-                          placeholder="Write your notes"
-                          placeholderTextColor={HowlColors.gray_80}
-                          multiline
-                          style={[styles.formInput, styles.formTextarea]}
-                        />
-
-                        <Text style={styles.mediaLabel}>Photo (Optional)</Text>
-                        <View style={styles.mediaSelectorRow}>
-                          <Pressable style={[styles.mediaChip, styles.mediaChipActive]} onPress={openCameraMenu}>
-                            <Text style={[styles.mediaChipText, styles.mediaChipTextActive]}>
-                              {imageBase64 ? 'Change Photo' : 'Add Photo'}
-                            </Text>
-                          </Pressable>
-                        </View>
-
-                        {imagePreviewUri ? (
-                          <Image source={{ uri: imagePreviewUri }} style={styles.imagePreview} contentFit="contain" />
-                        ) : null}
-
-                        <Pressable style={styles.formSubmitButton} onPress={saveSessionEntry} disabled={isSaving}>
-                          <Text style={styles.formSubmitButtonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-                        </Pressable>
-
-                        {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
-                      </View>
-                    ) : null}
                   </View>
                 </ScrollView>
               </ View>
@@ -534,7 +524,7 @@ const styles = StyleSheet.create({
   usernameContainer: {
     alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 8,
+    gap: 2,
     width: '100%',
   },
   scrollContainer: {
@@ -594,7 +584,7 @@ const styles = StyleSheet.create({
   signOutButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginTop: 4,
+    marginTop: 10,
     borderRadius: 50,
     backgroundColor: HowlColors.gray_80,
     alignItems: 'center',
@@ -661,151 +651,29 @@ const styles = StyleSheet.create({
     backgroundColor: HowlColors.blue_70,
     borderRadius: 10,
     width: '100%',
-    gap: 12
+    gap: 16
   },
   reflectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'NunitoSans-Bold',
     color: HowlColors.white,
   },
   reflectionItem: {
     borderTopWidth: 1,
     borderTopColor: HowlColors.gray_80,
-    paddingTop: 12,
+    paddingTop: 16,
+    gap: 16
   },
   reflectionImage: {
     width: '100%',
     height: 180,
     borderRadius: 10,
-    backgroundColor: HowlColors.blue_70,
-    marginBottom: 12,
+    backgroundColor: HowlColors.blue_70
   },
   reflectionNotes: {
     color: HowlColors.white,
     fontSize: 16,
     fontFamily: 'NunitoSans-Medium',
-  },
-
-
-
-  // TODO: Put at bottom
-  signInContainer: {
-    alignItems: 'center',
-    gap: 20,
-  },
-  signInButton: {
-    width: 364,
-    height: 60,
-  },
-  errorBadge: {
-    marginTop: 20,
-    backgroundColor: '#DC2626',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    maxWidth: '100%',
-  },
-  errorText: {
-    color: '#FFFFFF',
-    textAlign: 'center',
-    fontFamily: 'NunitoSans-SemiBold',
-    fontWeight: 'normal',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footerSection: {
-    width: '100%',
-  },
-
-
-
-  // TODO: Delete
-  formCard: {
-    width: 364,
-    borderRadius: 16,
-    backgroundColor: '#F3F7FB',
-    padding: 14,
-    marginTop: 8,
-  },
-  formTitle: {
-    color: HowlColors.gray_80,
-    fontSize: 16,
-    fontFamily: 'NunitoSans-Bold',
-    marginBottom: 10,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderColor: '#C6D1DD',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    color: HowlColors.gray_80,
-    fontFamily: 'NunitoSans-Regular',
-    fontSize: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  formTextarea: {
-    minHeight: 86,
-    textAlignVertical: 'top',
-  },
-  mediaLabel: {
-    color: HowlColors.gray_80,
-    fontFamily: 'NunitoSans-SemiBold',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  mediaSelectorRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  mediaChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#A9B9CA',
-    borderRadius: 999,
-    paddingVertical: 8,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  mediaChipActive: {
-    backgroundColor: '#294A68',
-    borderColor: '#294A68',
-  },
-  mediaChipText: {
-    color: '#294A68',
-    fontFamily: 'NunitoSans-SemiBold',
-    fontSize: 13,
-  },
-  mediaChipTextActive: {
-    color: '#FFFFFF',
-  },
-  imagePreview: {
-    width: '100%',
-    height: 180,
-    borderRadius: 10,
-    backgroundColor: '#E6EDF4',
-    marginBottom: 12,
-  },
-  formSubmitButton: {
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: HowlColors.gray_80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formSubmitButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'NunitoSans-Bold',
-    fontSize: 15,
-  },
-  formMessage: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#294A68',
-    fontFamily: 'NunitoSans-SemiBold',
-    textAlign: 'center',
   },
   fullPhotoOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -829,4 +697,127 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 999,
   },
+  reflectionEntryContainer: {
+    padding: 16,
+    paddingBottom: 24,
+    backgroundColor: HowlColors.blue_70,
+    borderRadius: 10,
+    width: '100%',
+    gap: 16
+  },
+  reflectionEntryTitle: {
+    color: HowlColors.white,
+    fontSize: 18,
+    fontFamily: 'NunitoSans-Bold',
+  },
+  reflectionEntrySubtitle: {
+    color: HowlColors.white,
+    fontSize: 16,
+    fontFamily: 'NunitoSans-Medium',
+    marginTop: -14,
+  },
+  reflectionEntryPhotoRow: {
+    borderTopWidth: 1,
+    borderTopColor: HowlColors.gray_80,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 16
+  },
+  reflectionEntryPhotoLabel: {
+    color: HowlColors.white,
+    fontFamily: 'NunitoSans-Bold',
+    fontSize: 16,
+  },
+  reflectionEntryPhotoButtonRow: {
+    flexDirection: 'row',
+    width: 140,
+  },
+  reflectionEntryPhotoButton: {
+    flex: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: HowlColors.gray_100,
+  },
+  reflectionEntryPhotoButtonActive: {
+    backgroundColor: HowlColors.blue_100,
+  },
+  reflectionEntryPhotoButtonText: {
+    color: HowlColors.white,
+    fontFamily: 'NunitoSans-Bold',
+    fontSize: 16,
+  },
+  reflectionEntryPhotoButtonTextActive: {
+    color: HowlColors.white,
+  },
+  reflectionEntryInput: {
+    borderWidth: 1,
+    borderColor: HowlColors.gray_80,
+    borderRadius: 10,
+    backgroundColor: HowlColors.white,
+    color: HowlColors.dark_blue,
+    fontFamily: 'NunitoSans-Regular',
+    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  reflectionEntryTextarea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  reflectionEntrySaveButton: {
+    height: 52,
+    borderRadius: 99,
+    backgroundColor: HowlColors.blue_100,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  reflectionEntrySaveButtonDisabled: {
+    backgroundColor: HowlColors.gray_80,
+  },
+  reflectionEntrySaveButtonText: {
+    color: HowlColors.white,
+    fontFamily: 'NunitoSans-Bold',
+    fontSize: 16,
+  },
+  reflectionEntrySaveButtonTextDisabled: {
+    color: HowlColors.white,
+  },
+  reflectionEntryMessage: {
+    marginTop: -8,
+    fontSize: 14,
+    color: HowlColors.gray_80,
+    fontFamily: 'NunitoSans-Medium',
+    textAlign: 'center',
+  },
+  signInContainer: {
+    alignItems: 'center',
+    gap: 20,
+  },
+  signInButton: {
+    width: 364,
+    height: 60,
+  },
+  errorBadge: {
+    marginTop: 20,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    maxWidth: '100%',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontFamily: 'NunitoSans-SemiBold',
+    fontWeight: 'normal',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  footerSection: {
+    width: '100%',
+  }
 });
