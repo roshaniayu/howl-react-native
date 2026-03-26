@@ -1,7 +1,7 @@
 import { AmbienceId, getAmbienceById, parseAmbienceId } from '@/constants/ambiences';
 import { HowlColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getLocalDateKey, trackSoundPlayedForDate } from '@/services/reflections';
+import { addPlayedTotalTimeForDate, getLocalDateKey, trackSoundPlayedForDate } from '@/services/reflections';
 import { Audio } from 'expo-av';
 import { HorizontalPicker } from 'expo-horizontal-picker';
 import { Image } from 'expo-image';
@@ -270,6 +270,12 @@ export default function HomeScreen() {
     if (wasPlaying && !isPlaying && totalSeconds !== null && remainingSeconds !== null) {
       const playedSeconds = Math.max(0, totalSeconds - remainingSeconds);
 
+      if (user && playedSeconds > 0) {
+        void addPlayedTotalTimeForDate(user.uid, getLocalDateKey(), playedSeconds, user.email ?? null).catch((error) => {
+          console.warn('Failed to track total played time', error);
+        });
+      }
+
       router.push({
         pathname: '/session-finished',
         params: {
@@ -279,7 +285,7 @@ export default function HomeScreen() {
     }
 
     wasPlayingRef.current = isPlaying;
-  }, [isPlaying, totalSeconds, remainingSeconds, router]);
+  }, [isPlaying, totalSeconds, remainingSeconds, router, user]);
 
   useEffect(() => {
     if (!isPlaying || !user) {

@@ -157,6 +157,25 @@ export const getPlayedSoundStatusForDate = async (userId: string, dateKey: strin
   return data.playedSound === true;
 };
 
+export const getPlayedTotalTimeForDate = async (userId: string, dateKey: string) => {
+  const firestore = getFirestore(getApp());
+  const playedSoundsQuery = query(
+    collection(firestore, 'playedSounds'),
+    where('userId', '==', userId),
+    where('dateKey', '==', dateKey),
+  );
+
+  const snapshot = await getDocs(playedSoundsQuery);
+  if (snapshot.empty) {
+    return 0;
+  }
+
+  const data = snapshot.docs[0].data() as { playedTotalTime?: number };
+  return typeof data.playedTotalTime === 'number' && Number.isFinite(data.playedTotalTime)
+    ? Math.max(0, Math.floor(data.playedTotalTime))
+    : 0;
+};
+
 export const trackSoundPlayedForDate = async (userId: string, dateKey: string, userEmail: string | null = null) => {
   const firestore = getFirestore(getApp());
   const playedSoundsQuery = query(
@@ -172,6 +191,7 @@ export const trackSoundPlayedForDate = async (userId: string, dateKey: string, u
       userEmail,
       dateKey,
       playedSound: true,
+      playedTotalTime: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -187,4 +207,53 @@ export const trackSoundPlayedForDate = async (userId: string, dateKey: string, u
       updatedAt: serverTimestamp(),
     });
   }
+};
+
+export const addPlayedTotalTimeForDate = async (
+  userId: string,
+  dateKey: string,
+  playedSeconds: number,
+  userEmail: string | null = null,
+) => {
+  const firestore = getFirestore(getApp());
+  const normalizedSeconds = Math.max(0, Math.floor(playedSeconds));
+
+  if (normalizedSeconds <= 0) {
+    return;
+  }
+
+  const playedSoundsQuery = query(
+    collection(firestore, 'playedSounds'),
+    where('userId', '==', userId),
+    where('dateKey', '==', dateKey),
+  );
+
+  const snapshot = await getDocs(playedSoundsQuery);
+
+  if (snapshot.empty) {
+    await addDoc(collection(firestore, 'playedSounds'), {
+      userId,
+      userEmail,
+      dateKey,
+      playedSound: true,
+      playedTotalTime: normalizedSeconds,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  const existingDoc = snapshot.docs[0];
+  const existingData = existingDoc.data() as { playedTotalTime?: number };
+  const previousTotal =
+    typeof existingData.playedTotalTime === 'number' && Number.isFinite(existingData.playedTotalTime)
+      ? Math.max(0, Math.floor(existingData.playedTotalTime))
+      : 0;
+
+  await updateDoc(existingDoc.ref, {
+    userEmail,
+    playedSound: true,
+    playedTotalTime: previousTotal + normalizedSeconds,
+    updatedAt: serverTimestamp(),
+  });
 };

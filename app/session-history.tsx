@@ -6,9 +6,11 @@ import {
   fetchReflectionsByDate as fetchReflectionsByDateFromDb,
   getLocalDateKey,
   getPlayedSoundStatusForDate,
+  getPlayedTotalTimeForDate,
   saveReflectionForDate,
   type ReflectionDoc,
 } from '@/services/reflections';
+import { formatDuration } from '@/utils/time-format';
 import { GoogleSigninButton, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -75,6 +77,7 @@ export default function SessionHistoryScreen() {
   const [selectedDate, setSelectedDate] = useState(getLocalDateKey());
   const [reflections, setReflections] = useState<ReflectionDoc[]>([]);
   const [selectedDatePlayedSound, setSelectedDatePlayedSound] = useState(false);
+  const [selectedDatePlayedTotalTime, setSelectedDatePlayedTotalTime] = useState(0);
   const [isLoadingReflections, setIsLoadingReflections] = useState(false);
   const [markedDateKeys, setMarkedDateKeys] = useState<string[]>([]);
 
@@ -105,22 +108,26 @@ export default function SessionHistoryScreen() {
     if (!user) {
       setReflections([]);
       setSelectedDatePlayedSound(false);
+      setSelectedDatePlayedTotalTime(0);
       return;
     }
 
     setIsLoadingReflections(true);
     try {
-      const [rows, playedSound] = await Promise.all([
+      const [rows, playedSound, playedTotalTime] = await Promise.all([
         fetchReflectionsByDateFromDb(user.uid, selectedDate),
         getPlayedSoundStatusForDate(user.uid, selectedDate),
+        getPlayedTotalTimeForDate(user.uid, selectedDate),
       ]);
       setReflections(rows);
       setSelectedDatePlayedSound(playedSound);
+      setSelectedDatePlayedTotalTime(playedTotalTime);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'Failed to load reflections.';
       setFormMessage(message);
       setReflections([]);
       setSelectedDatePlayedSound(false);
+      setSelectedDatePlayedTotalTime(0);
     } finally {
       setIsLoadingReflections(false);
     }
@@ -351,6 +358,12 @@ export default function SessionHistoryScreen() {
                   {!isLoadingReflections ? (
                     <Text style={styles.selectedDateSoundStatus}>
                       Sound played on this date: {selectedDatePlayedSound ? 'Yes' : 'No'}
+                    </Text>
+                  ) : null}
+
+                  {!isLoadingReflections ? (
+                    <Text style={styles.selectedDateSoundStatus}>
+                      Total time played: {formatDuration(selectedDatePlayedTotalTime)}
                     </Text>
                   ) : null}
 

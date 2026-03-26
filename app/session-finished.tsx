@@ -1,32 +1,17 @@
 import { Modal } from '@/components/ui/modal';
 import { HowlColors } from '@/constants/theme';
+import { formatDuration } from '@/utils/time-format';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-const subtitle = 'Today, Howl has softly sent you to a sweet slumber for a total of';
+const subtitle = 'Howl has softly sent you to a sweet slumber for a total of';
 const quotePart1 = 'The sun showed up again. So I looked up and asked it: ';
 const quoteBold1 = '‘Why?’';
 const quotePart2 = 'The sun looked down, and brightly whispered: ';
 const quoteBold2 = '‘To give you another try.’';
 const quotePart3 = '- Brad Montague';
-
-function formatDuration(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
-  const mins = Math.floor(safeSeconds / 60);
-  const secs = safeSeconds % 60;
-
-  if (mins > 0) {
-    if (secs > 0) {
-      return `${mins} mins ${secs} secs`;
-    }
-
-    return `${mins} mins`;
-  }
-
-  return `${secs} secs`;
-}
 
 export default function SessionFinishedScreen() {
   const router = useRouter();
