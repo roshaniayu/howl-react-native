@@ -158,7 +158,7 @@ export default function SessionHistoryScreen() {
     selectedDayTextColor: HowlColors.blue_100,
     todayTextColor: HowlColors.gray_80,
     dayTextColor: HowlColors.gray_80,
-    textDisabledColor: HowlColors.dark_blue,
+    textDisabledColor: HowlColors.gray_80,
     monthTextColor: HowlColors.gray_80,
     arrowColor: HowlColors.gray_80,
     dotColor: HowlColors.gray_80,
@@ -348,8 +348,6 @@ export default function SessionHistoryScreen() {
                         calendarWidth={calendarCardWidth}
                         style={[styles.weekCalendar, { width: calendarCardWidth }]}
                         firstDay={1}
-                        maxDate={todayKey}
-                        disableAllTouchEventsForDisabledDays
                         onDayPress={(day) => setSelectedDate(day.dateString)}
                         markedDates={markedDates}
                         theme={weekCalendarTheme}
@@ -361,6 +359,10 @@ export default function SessionHistoryScreen() {
                     {isLoadingReflections ? (
                       <View style={styles.loadingContainer}>
                         <Text style={styles.sessionText}>Loading reflections...</Text>
+                      </View>
+                    ) : selectedDate > todayKey ? (
+                      <View style={styles.futureDateContainer}>
+                        <Text style={styles.sessionText}>See you in the future!</Text>
                       </View>
                     ) : (
                       <View style={styles.historyContentContainer}>
@@ -611,6 +613,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  futureDateContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
